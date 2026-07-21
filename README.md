@@ -36,9 +36,10 @@ Tally answers one question well: *where did my money go this month?* It tracks c
 
 **Automate the boring parts**
 - **Recurring transactions** (salary, rent, subscriptions) post automatically, with catch-up on open.
-- **Import from a message** — paste a bank SMS or wallet notification and Tally reads it **on-device** to pull out the transaction for you to confirm.
+- **Auto-capture from notifications (Android)** — with your opt-in "notification access", Tally reads bank/wallet transaction alerts (e.g. Meezan SMS) **on-device**, nudges you, and drops them into a review inbox to confirm in one tap. You can also paste a message manually — the same on-device parser handles both.
 
 **Yours alone**
+- **Fingerprint / device lock** — optionally require your fingerprint or device PIN to open the app (shared `core_lock`).
 - **Encrypted backup & restore** to a folder or **Google Drive**, protected by a passphrase only you know.
 
 ## 🔒 Privacy & Security

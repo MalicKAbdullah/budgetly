@@ -84,12 +84,14 @@ class ReceivablesScreen extends ConsumerWidget {
     AppData data,
     Receivable r,
   ) async {
-    final result = await showDialog<(int, String)>(
-      context: context,
-      builder: (_) => _RepayDialog(
-        accounts: data.activeAccounts,
-        maxMinor: r.owedMinor,
-        code: data.currencyCode,
+    final result = await Navigator.of(context).push<(int, String)>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _RepayForm(
+          accounts: data.activeAccounts,
+          maxMinor: r.owedMinor,
+          code: data.currencyCode,
+        ),
       ),
     );
     if (result != null) {
@@ -105,8 +107,8 @@ class ReceivablesScreen extends ConsumerWidget {
   }
 }
 
-class _RepayDialog extends StatefulWidget {
-  const _RepayDialog({
+class _RepayForm extends StatefulWidget {
+  const _RepayForm({
     required this.accounts,
     required this.maxMinor,
     required this.code,
@@ -116,10 +118,10 @@ class _RepayDialog extends StatefulWidget {
   final String code;
 
   @override
-  State<_RepayDialog> createState() => _RepayDialogState();
+  State<_RepayForm> createState() => _RepayFormState();
 }
 
-class _RepayDialogState extends State<_RepayDialog> {
+class _RepayFormState extends State<_RepayForm> {
   late final TextEditingController _amount;
   String? _accountId;
   String? _error;
@@ -156,10 +158,15 @@ class _RepayDialogState extends State<_RepayDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Record repayment'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Record repayment'),
+        actions: [
+          TextButton(onPressed: _submit, child: const Text('Record')),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
         children: [
           TextField(
             controller: _amount,
@@ -169,29 +176,31 @@ class _RepayDialogState extends State<_RepayDialog> {
               labelText: 'Amount received',
               prefixText: '${widget.code} ',
               errorText: _error,
+              border: const OutlineInputBorder(),
             ),
             onChanged: (_) => setState(() => _error = null),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<String>(
             isExpanded: true,
             initialValue: _accountId,
-            decoration: const InputDecoration(labelText: 'Into account'),
+            decoration: const InputDecoration(
+              labelText: 'Into account',
+              border: OutlineInputBorder(),
+            ),
             items: [
               for (final a in widget.accounts)
                 DropdownMenuItem(value: a.id, child: Text(a.name)),
             ],
             onChanged: (v) => setState(() => _accountId = v),
           ),
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton(
+            onPressed: _submit,
+            child: const Text('Record repayment'),
+          ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Record')),
-      ],
     );
   }
 }

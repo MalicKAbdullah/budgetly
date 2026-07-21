@@ -15,9 +15,11 @@ class AccountsScreen extends ConsumerWidget {
     WidgetRef ref,
     Account? existing,
   ) async {
-    final result = await showDialog<Account>(
-      context: context,
-      builder: (_) => _AccountDialog(existing: existing),
+    final result = await Navigator.of(context).push<Account>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _AccountForm(existing: existing),
+      ),
     );
     if (result != null) {
       await ref.read(appDataProvider.notifier).saveAccount(result);
@@ -103,15 +105,15 @@ class AccountsScreen extends ConsumerWidget {
   }
 }
 
-class _AccountDialog extends StatefulWidget {
-  const _AccountDialog({this.existing});
+class _AccountForm extends StatefulWidget {
+  const _AccountForm({this.existing});
   final Account? existing;
 
   @override
-  State<_AccountDialog> createState() => _AccountDialogState();
+  State<_AccountForm> createState() => _AccountFormState();
 }
 
-class _AccountDialogState extends State<_AccountDialog> {
+class _AccountFormState extends State<_AccountForm> {
   late final TextEditingController _name;
   late final TextEditingController _opening;
   late AccountType _type;
@@ -164,49 +166,62 @@ class _AccountDialogState extends State<_AccountDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.existing == null ? 'New account' : 'Edit account'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.existing == null ? 'New account' : 'Edit account'),
+        actions: [
+          TextButton(onPressed: _submit, child: const Text('Save')),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
         children: [
           TextField(
             controller: _name,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Name'),
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              border: OutlineInputBorder(),
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<AccountType>(
             isExpanded: true,
             initialValue: _type,
-            decoration: const InputDecoration(labelText: 'Type'),
+            decoration: const InputDecoration(
+              labelText: 'Type',
+              border: OutlineInputBorder(),
+            ),
             items: [
               for (final t in AccountType.values)
                 DropdownMenuItem(value: t, child: Text(t.label)),
             ],
             onChanged: (v) => setState(() => _type = v ?? _type),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _opening,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Opening balance'),
+            decoration: const InputDecoration(
+              labelText: 'Opening balance',
+              border: OutlineInputBorder(),
+            ),
           ),
-          if (widget.existing != null)
+          if (widget.existing != null) ...[
+            const SizedBox(height: AppSpacing.sm),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Archived'),
+              subtitle: const Text('Hide from pickers, keep history'),
               value: _archived,
               onChanged: (v) => setState(() => _archived = v),
             ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton(onPressed: _submit, child: const Text('Save account')),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Save')),
-      ],
     );
   }
 }

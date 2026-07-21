@@ -40,14 +40,16 @@ class SettingsScreen extends ConsumerWidget {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.sms_outlined),
-                  title: const Text('Import from message'),
-                  subtitle: const Text('Paste a bank SMS / wallet alert'),
+                  title: const Text('Auto-capture & import'),
+                  subtitle: const Text('Read bank/wallet alerts, or paste one'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/import'),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+          const _AutoCaptureTile(),
           const SizedBox(height: AppSpacing.md),
           Text('Security', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
@@ -172,6 +174,68 @@ class SettingsScreen extends ConsumerWidget {
             child: const Text('Restore'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Auto-capture status: shows whether Tally has notification access and opens
+/// the system settings to grant it. Android only — hidden elsewhere.
+class _AutoCaptureTile extends ConsumerStatefulWidget {
+  const _AutoCaptureTile();
+
+  @override
+  ConsumerState<_AutoCaptureTile> createState() => _AutoCaptureTileState();
+}
+
+class _AutoCaptureTileState extends ConsumerState<_AutoCaptureTile>
+    with WidgetsBindingObserver {
+  bool _enabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-check after returning from the system settings screen.
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final enabled = await ref.read(captureServiceProvider).isEnabled();
+    if (mounted) setState(() => _enabled = enabled);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!ref.read(captureServiceProvider).supported) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      child: SwitchListTile(
+        secondary: const Icon(Icons.notifications_active_outlined),
+        title: const Text('Auto-capture from notifications'),
+        subtitle: Text(
+          _enabled
+              ? 'Reading bank/wallet alerts on-device. Confirm them in import.'
+              : 'Grant notification access so Tally can read transaction alerts',
+        ),
+        value: _enabled,
+        onChanged: (_) async {
+          // Toggling either way just opens the system screen; Android owns
+          // the actual grant. We re-read on resume.
+          await ref.read(captureServiceProvider).openSettings();
+        },
       ),
     );
   }

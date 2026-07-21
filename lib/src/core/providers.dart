@@ -15,6 +15,7 @@ import 'package:tally/src/core/storage/data_key_store.dart';
 import 'package:tally/src/core/storage/tally_store.dart';
 import 'package:tally/src/core/storage/vault_file.dart';
 import 'package:tally/src/features/backup/backup_codec.dart';
+import 'package:tally/src/features/import/capture_service.dart';
 
 /// Wall clock as a function. Tests override with a fixed time.
 final clockProvider = Provider<DateTime Function()>((_) => DateTime.now);
@@ -102,6 +103,11 @@ final lockControllerProvider = ChangeNotifierProvider<LockController>(
 /// Settings availability: whether the device can show an auth prompt.
 final deviceAuthAvailableProvider = FutureProvider<bool>(
   (ref) => ref.watch(deviceAuthProvider).canAuthenticate(),
+);
+
+/// Native notification-capture bridge (Android auto-import).
+final captureServiceProvider = Provider<CaptureService>(
+  (_) => CaptureService(),
 );
 
 /// Produces the encrypted `.tallybackup` bytes for the current dataset.

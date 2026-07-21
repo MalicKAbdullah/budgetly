@@ -11,9 +11,11 @@ class BudgetsScreen extends ConsumerWidget {
   const BudgetsScreen({super.key});
 
   Future<void> _edit(BuildContext context, WidgetRef ref, Category? c) async {
-    final result = await showDialog<Category>(
-      context: context,
-      builder: (_) => _CategoryDialog(existing: c),
+    final result = await Navigator.of(context).push<Category>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _CategoryForm(existing: c),
+      ),
     );
     if (result != null) {
       await ref.read(appDataProvider.notifier).saveCategory(result);
@@ -106,15 +108,15 @@ class BudgetsScreen extends ConsumerWidget {
   }
 }
 
-class _CategoryDialog extends StatefulWidget {
-  const _CategoryDialog({this.existing});
+class _CategoryForm extends StatefulWidget {
+  const _CategoryForm({this.existing});
   final Category? existing;
 
   @override
-  State<_CategoryDialog> createState() => _CategoryDialogState();
+  State<_CategoryForm> createState() => _CategoryFormState();
 }
 
-class _CategoryDialogState extends State<_CategoryDialog> {
+class _CategoryFormState extends State<_CategoryForm> {
   late final TextEditingController _name;
   late final TextEditingController _budget;
 
@@ -157,33 +159,41 @@ class _CategoryDialogState extends State<_CategoryDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.existing == null ? 'New category' : 'Edit category'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.existing == null ? 'New category' : 'Edit category',
+        ),
+        actions: [
+          TextButton(onPressed: _submit, child: const Text('Save')),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
         children: [
           TextField(
             controller: _name,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Name'),
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              border: OutlineInputBorder(),
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           TextField(
             controller: _budget,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: 'Monthly budget (optional)',
+              helperText: 'Leave blank to just track spending',
+              border: OutlineInputBorder(),
             ),
           ),
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton(onPressed: _submit, child: const Text('Save category')),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Save')),
-      ],
     );
   }
 }
