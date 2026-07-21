@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧮 Tally
+# 🧮 Budgetly
 
 ### Know where your money goes.
 
@@ -15,9 +15,9 @@ A private, offline-first budget tracker that follows cash **and** digital money 
 </div>
 
 > ### 🔒 Private by design
-> Tally works **completely offline**. Every account, transaction, and budget is **encrypted on your device**. No account, no servers, no analytics — your finances never leave your phone.
+> Budgetly works **completely offline**. Every account, transaction, and budget is **encrypted on your device**. No account, no servers, no analytics — your finances never leave your phone.
 
-Tally answers one question well: *where did my money go this month?* It tracks cash and digital together with an accounts model, so moving money around never looks like spending — and it handles the messy real-world cases (splitting a bill, getting paid back, recurring bills) that generic budget apps get wrong.
+Budgetly answers one question well: *where did my money go this month?* It tracks cash and digital together with an accounts model, so moving money around never looks like spending — and it handles the messy real-world cases (splitting a bill, getting paid back, recurring bills) that generic budget apps get wrong.
 
 ## ✨ Features
 
@@ -32,11 +32,11 @@ Tally answers one question well: *where did my money go this month?* It tracks c
 
 **Settle up with friends**
 - **Split / reimbursable expenses** — mark the part friends will pay back. Only *your share* counts as spending; the rest becomes a receivable.
-- An **"Owed to you"** view; record a repayment and it clears the receivable **without** being counted as income — even when you paid cash and were paid back digitally.
+- An **"Owed to you"** view; record a repayment and it clears the receivable **without** being counted as income — even when you paid cash and were paid back digibudgetly.
 
 **Automate the boring parts**
 - **Recurring transactions** (salary, rent, subscriptions) post automatically, with catch-up on open.
-- **Auto-capture from notifications (Android)** — with your opt-in "notification access", Tally reads bank/wallet transaction alerts (e.g. Meezan SMS) **on-device**, nudges you, and drops them into a review inbox to confirm in one tap. You can also paste a message manually — the same on-device parser handles both.
+- **Auto-capture from notifications (Android)** — with your opt-in "notification access", Budgetly reads bank/wallet transaction alerts (e.g. Meezan SMS) **on-device**, nudges you, and drops them into a review inbox to confirm in one tap. You can also paste a message manually — the same on-device parser handles both.
 
 **Yours alone**
 - **Fingerprint / device lock** — optionally require your fingerprint or device PIN to open the app (shared `core_lock`).
@@ -62,8 +62,8 @@ Tally answers one question well: *where did my money go this month?* It tracks c
 
 ```sh
 # 1. Clone
-git clone https://github.com/MalicKAbdullah/tally.git
-cd tally
+git clone https://github.com/MalicKAbdullah/budgetly.git
+cd budgetly
 
 # 2. Install dependencies (also fetches secure-suite-core)
 flutter pub get

@@ -1,16 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tally/src/core/shell/home_shell.dart';
-import 'package:tally/src/features/accounts/accounts_screen.dart';
-import 'package:tally/src/features/budgets/budgets_screen.dart';
-import 'package:tally/src/features/dashboard/dashboard_screen.dart';
-import 'package:tally/src/features/import/import_screen.dart';
-import 'package:tally/src/features/recurring/recurring_editor_screen.dart';
-import 'package:tally/src/features/recurring/recurring_screen.dart';
-import 'package:tally/src/features/reimbursements/receivables_screen.dart';
-import 'package:tally/src/features/settings/settings_screen.dart';
-import 'package:tally/src/features/transactions/transactions_screen.dart';
-import 'package:tally/src/features/transactions/txn_editor_screen.dart';
+import 'package:budgetly/src/core/shell/home_shell.dart';
+import 'package:budgetly/src/features/accounts/accounts_screen.dart';
+import 'package:budgetly/src/features/budgets/budgets_screen.dart';
+import 'package:budgetly/src/features/dashboard/dashboard_screen.dart';
+import 'package:budgetly/src/features/import/import_screen.dart';
+import 'package:budgetly/src/features/recurring/recurring_editor_screen.dart';
+import 'package:budgetly/src/features/recurring/recurring_screen.dart';
+import 'package:budgetly/src/features/reimbursements/receivables_screen.dart';
+import 'package:budgetly/src/features/settings/settings_screen.dart';
+import 'package:budgetly/src/features/transactions/transactions_screen.dart';
+import 'package:budgetly/src/features/transactions/txn_editor_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(

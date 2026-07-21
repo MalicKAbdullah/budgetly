@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart' show immutable;
-import 'package:tally/src/core/models/recurring_template.dart';
-import 'package:tally/src/core/models/txn.dart';
+import 'package:budgetly/src/core/models/recurring_template.dart';
+import 'package:budgetly/src/core/models/txn.dart';
 
 @immutable
 final class RecurringRunResult {

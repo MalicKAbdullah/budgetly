@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:tally/src/core/models/recurring_template.dart';
-import 'package:tally/src/core/money.dart';
-import 'package:tally/src/core/providers.dart';
+import 'package:budgetly/src/core/models/recurring_template.dart';
+import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/providers.dart';
 
 class RecurringScreen extends ConsumerWidget {
   const RecurringScreen({super.key});

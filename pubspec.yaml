@@ -1,5 +1,5 @@
-name: tally
-description: "Tally — a private, offline-first personal budget tracker."
+name: budgetly
+description: "Budgetly — a private, offline-first personal budget tracker."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.4.0+4
+version: 0.5.0+5
 
 environment:
   sdk: ^3.11.1
@@ -87,7 +87,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/icon/icon.png
-  adaptive_icon_background: "#2F9E44"
+  adaptive_icon_background: "#0B0B0D"
   adaptive_icon_foreground: assets/icon/icon_foreground.png
   remove_alpha_ios: true
 

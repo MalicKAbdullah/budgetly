@@ -8,14 +8,14 @@ import 'package:core_lock/core_lock.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/data/app_data_notifier.dart';
-import 'package:tally/src/core/security/key_derivation.dart';
-import 'package:tally/src/core/storage/data_key_store.dart';
-import 'package:tally/src/core/storage/tally_store.dart';
-import 'package:tally/src/core/storage/vault_file.dart';
-import 'package:tally/src/features/backup/backup_codec.dart';
-import 'package:tally/src/features/import/capture_service.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/data/app_data_notifier.dart';
+import 'package:budgetly/src/core/security/key_derivation.dart';
+import 'package:budgetly/src/core/storage/data_key_store.dart';
+import 'package:budgetly/src/core/storage/budgetly_store.dart';
+import 'package:budgetly/src/core/storage/vault_file.dart';
+import 'package:budgetly/src/features/backup/backup_codec.dart';
+import 'package:budgetly/src/features/import/capture_service.dart';
 
 /// Wall clock as a function. Tests override with a fixed time.
 final clockProvider = Provider<DateTime Function()>((_) => DateTime.now);
@@ -38,8 +38,8 @@ final dataKeyStoreProvider = Provider<DataKeyStore>(
   (ref) => DataKeyStore(ref.watch(secureStorageProvider)),
 );
 
-final tallyStoreProvider = Provider<TallyStore>(
-  (ref) => TallyStore(
+final budgetlyStoreProvider = Provider<BudgetlyStore>(
+  (ref) => BudgetlyStore(
     cipher: ref.watch(cipherServiceProvider),
     keyStore: ref.watch(dataKeyStoreProvider),
     file: ref.watch(vaultFileProvider),
@@ -71,8 +71,8 @@ final autoBackupServiceProvider = Provider<AutoBackupService>(
   (ref) => AutoBackupService(
     storage: ref.watch(secureStorageProvider),
     folder: ref.watch(backupFolderProvider),
-    keyPrefix: 'tally',
-    fileLabel: 'Tally',
+    keyPrefix: 'budgetly',
+    fileLabel: 'Budgetly',
     fileExtension: BackupCodec.fileExtension,
     now: () => ref.read(clockProvider)(),
   ),
@@ -94,8 +94,8 @@ final lockControllerProvider = ChangeNotifierProvider<LockController>(
     deviceAuth: ref.watch(deviceAuthProvider),
     storage: ref.watch(secureStorageProvider),
     clock: () => ref.read(clockProvider)(),
-    storageKey: 'tally_app_lock_enabled',
-    appName: 'Tally',
+    storageKey: 'budgetly_app_lock_enabled',
+    appName: 'Budgetly',
     enabled: ref.watch(appLockEnabledOnLaunchProvider),
   ),
 );
@@ -110,8 +110,16 @@ final captureServiceProvider = Provider<CaptureService>(
   (_) => CaptureService(),
 );
 
-/// Produces the encrypted `.tallybackup` bytes for the current dataset.
-final tallyBackupProducerProvider = Provider<BackupProducer>((ref) {
+/// Captured-but-unreviewed notification texts. Invalidate after any
+/// accept/dismiss and on app resume so the dashboard banner stays current.
+final pendingCapturesProvider = FutureProvider<List<String>>((ref) async {
+  final cap = ref.watch(captureServiceProvider);
+  if (!cap.supported || !await cap.isEnabled()) return const [];
+  return cap.getPending();
+});
+
+/// Produces the encrypted `.budgetlybackup` bytes for the current dataset.
+final budgetlyBackupProducerProvider = Provider<BackupProducer>((ref) {
   return (passphrase) async {
     final data = ref.read(appDataProvider).valueOrNull ?? const AppData();
     final raw = await ref

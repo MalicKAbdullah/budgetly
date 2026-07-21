@@ -3,8 +3,8 @@ import 'package:core_storage/core_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:tally/src/app.dart';
-import 'package:tally/src/core/providers.dart';
+import 'package:budgetly/src/app.dart';
+import 'package:budgetly/src/core/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,7 +12,7 @@ Future<void> main() async {
   const storage = SecureStorageImpl(FlutterSecureStorage());
   final lockEnabled = await LockController.readEnabled(
     storage,
-    'tally_app_lock_enabled',
+    'budgetly_app_lock_enabled',
   );
 
   runApp(
@@ -21,7 +21,7 @@ Future<void> main() async {
         deviceAuthProvider.overrideWithValue(LocalAuthDeviceAuth()),
         appLockEnabledOnLaunchProvider.overrideWithValue(lockEnabled),
       ],
-      child: const TallyApp(),
+      child: const BudgetlyApp(),
     ),
   );
 }

@@ -1,17 +1,19 @@
-package dev.abdullah.tally
+package dev.abdullah.budgetly
 
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONArray
 
-class MainActivity : FlutterActivity() {
+// FlutterFragmentActivity (not FlutterActivity) is required by local_auth —
+// the biometric prompt silently fails ("cancelled") without it.
+class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(engine: FlutterEngine) {
         super.configureFlutterEngine(engine)
-        MethodChannel(engine.dartExecutor.binaryMessenger, "tally/capture")
+        MethodChannel(engine.dartExecutor.binaryMessenger, "budgetly/capture")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "isEnabled" -> result.success(listenerEnabled())

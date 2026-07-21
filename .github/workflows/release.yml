@@ -31,9 +31,9 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/tally-release.jks
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/budgetly-release.jks
           cat > android/key.properties <<EOF
-          storeFile=tally-release.jks
+          storeFile=budgetly-release.jks
           storePassword=$KEYSTORE_PASSWORD
           keyPassword=$KEY_PASSWORD
           keyAlias=$KEY_ALIAS
@@ -47,7 +47,7 @@ jobs:
 
       - name: Clean up signing material
         if: always()
-        run: rm -f android/app/tally-release.jks android/key.properties
+        run: rm -f android/app/budgetly-release.jks android/key.properties
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

@@ -1,14 +1,14 @@
 import 'dart:convert';
 
 import 'package:core_crypto/core_crypto.dart';
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/storage/data_key_store.dart';
-import 'package:tally/src/core/storage/vault_file.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/storage/data_key_store.dart';
+import 'package:budgetly/src/core/storage/vault_file.dart';
 
 /// Persistence: JSON → AES-256-GCM → single vault file. Load-decrypt on start,
 /// encrypt-write on every mutation.
-final class TallyStore {
-  const TallyStore({
+final class BudgetlyStore {
+  const BudgetlyStore({
     required CipherService cipher,
     required DataKeyStore keyStore,
     required IVaultFile file,

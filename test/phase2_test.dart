@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/logic/budgets.dart';
-import 'package:tally/src/core/logic/recurring.dart';
-import 'package:tally/src/core/logic/reimbursements.dart';
-import 'package:tally/src/core/models/recurring_template.dart';
-import 'package:tally/src/core/models/txn.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/budgets.dart';
+import 'package:budgetly/src/core/logic/recurring.dart';
+import 'package:budgetly/src/core/logic/reimbursements.dart';
+import 'package:budgetly/src/core/models/recurring_template.dart';
+import 'package:budgetly/src/core/models/txn.dart';
 
 void main() {
   final created = DateTime(2026, 1, 1);

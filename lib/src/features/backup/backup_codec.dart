@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:core_crypto/core_crypto.dart';
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/security/key_derivation.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/security/key_derivation.dart';
 
 enum BackupError { invalidFormat, unsupportedVersion, wrongPassphrase }
 
@@ -14,7 +14,7 @@ final class BackupException implements Exception {
   String toString() => 'BackupException($error)';
 }
 
-/// Encrypted, portable `.tallybackup` of the whole dataset. The AppData JSON is
+/// Encrypted, portable `.budgetlybackup` of the whole dataset. The AppData JSON is
 /// encrypted with AES-256-GCM under an Argon2id key derived from a *backup
 /// passphrase* (independent of the device data key, so it restores on any
 /// device).
@@ -29,7 +29,7 @@ final class BackupCodec {
   final CipherService _cipher;
 
   static const int formatVersion = 1;
-  static const String fileExtension = 'tallybackup';
+  static const String fileExtension = 'budgetlybackup';
   static const int minPassphraseLength = 8;
 
   Future<String> encode({
@@ -47,7 +47,7 @@ final class BackupCodec {
     key.fillRange(0, key.length, 0);
     return jsonEncode({
       'formatVersion': formatVersion,
-      'app': 'tally',
+      'app': 'budgetly',
       'createdAt': createdAt.toIso8601String(),
       'accountCount': data.accounts.length,
       'txnCount': data.txns.length,

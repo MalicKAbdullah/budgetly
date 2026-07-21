@@ -42,4 +42,4 @@ to debug signing unless you create your own `android/key.properties`.
 ## Versioning
 
 Tags are `vMAJOR.MINOR.PATCH` and should match the `version:` in `pubspec.yaml`.
-Tally is pre-1.0 while the always-on SMS/notification capture is being finished.
+Budgetly is pre-1.0 while the always-on SMS/notification capture is being finished.

@@ -6,8 +6,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tally/src/core/providers.dart';
-import 'package:tally/src/features/backup/backup_codec.dart';
+import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/features/backup/backup_codec.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -63,7 +63,7 @@ class SettingsScreen extends ConsumerWidget {
           Card(
             child: AutoBackupSection(
               service: ref.watch(autoBackupServiceProvider),
-              producer: ref.watch(tallyBackupProducerProvider),
+              producer: ref.watch(budgetlyBackupProducerProvider),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -71,7 +71,9 @@ class SettingsScreen extends ConsumerWidget {
             child: ListTile(
               leading: const Icon(Icons.settings_backup_restore),
               title: const Text('Restore from backup'),
-              subtitle: const Text('Replace all data with a .tallybackup file'),
+              subtitle: const Text(
+                'Replace all data with a .budgetlybackup file',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _restore(context, ref),
             ),
@@ -81,7 +83,7 @@ class SettingsScreen extends ConsumerWidget {
             child: Padding(
               padding: EdgeInsets.all(AppSpacing.md),
               child: Text(
-                'Tally is offline and private. Your data is encrypted on this '
+                'Budgetly is offline and private. Your data is encrypted on this '
                 'device; backups are encrypted with your passphrase before they '
                 'ever reach a folder or Drive.',
                 style: TextStyle(fontSize: 12),
@@ -116,7 +118,7 @@ class SettingsScreen extends ConsumerWidget {
           content: Text(
             'This backup has ${data.accounts.length} accounts and '
             '${data.txns.length} transactions. It will replace everything '
-            'currently in Tally.',
+            'currently in Budgetly.',
           ),
           actions: [
             TextButton(
@@ -141,7 +143,7 @@ class SettingsScreen extends ConsumerWidget {
         BackupError.wrongPassphrase => 'Wrong passphrase.',
         BackupError.unsupportedVersion =>
           'This backup is from a newer version.',
-        BackupError.invalidFormat => 'That is not a valid Tally backup.',
+        BackupError.invalidFormat => 'That is not a valid Budgetly backup.',
       };
       messenger.showSnackBar(SnackBar(content: Text(msg)));
     } catch (_) {
@@ -179,7 +181,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-/// Auto-capture status: shows whether Tally has notification access and opens
+/// Auto-capture status: shows whether Budgetly has notification access and opens
 /// the system settings to grant it. Android only — hidden elsewhere.
 class _AutoCaptureTile extends ConsumerStatefulWidget {
   const _AutoCaptureTile();
@@ -228,7 +230,7 @@ class _AutoCaptureTileState extends ConsumerState<_AutoCaptureTile>
         subtitle: Text(
           _enabled
               ? 'Reading bank/wallet alerts on-device. Confirm them in import.'
-              : 'Grant notification access so Tally can read transaction alerts',
+              : 'Grant notification access so Budgetly can read transaction alerts',
         ),
         value: _enabled,
         onChanged: (_) async {
@@ -255,7 +257,7 @@ class _AppLockTile extends ConsumerWidget {
         subtitle: Text(
           available == false
               ? 'Set up a fingerprint or screen lock on your device first'
-              : 'Ask for fingerprint / device PIN to open Tally',
+              : 'Ask for fingerprint / device PIN to open Budgetly',
         ),
         value: controller.isEnabled,
         onChanged: available == false

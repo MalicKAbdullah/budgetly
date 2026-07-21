@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tally/src/features/import/sms_parser.dart';
+import 'package:budgetly/src/features/import/sms_parser.dart';
 
 void main() {
   group('SmsParser — Meezan (8079) real formats', () {

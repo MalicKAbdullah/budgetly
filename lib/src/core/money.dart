@@ -25,6 +25,20 @@ abstract final class Money {
     return f.format(minor / 100.0);
   }
 
+  /// Short form for tight spots (chart labels): `450`, `4.5k`, `1.2M`.
+  static String compact(int minor, {String code = 'PKR'}) {
+    final major = minor / 100.0;
+    if (major >= 1000000) {
+      return '${(major / 1000000).toStringAsFixed(1)}M';
+    }
+    if (major >= 1000) {
+      return major >= 100000
+          ? '${(major / 1000).toStringAsFixed(0)}k'
+          : '${(major / 1000).toStringAsFixed(1)}k';
+    }
+    return major.toStringAsFixed(0);
+  }
+
   /// Parses user input like `1250` or `1,250.50` into minor units. Returns
   /// null when the text is not a valid non-negative amount.
   static int? parse(String text) {

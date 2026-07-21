@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/logic/recurring.dart';
-import 'package:tally/src/core/models/account.dart';
-import 'package:tally/src/core/models/category.dart';
-import 'package:tally/src/core/models/recurring_template.dart';
-import 'package:tally/src/core/models/txn.dart';
-import 'package:tally/src/core/providers.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/recurring.dart';
+import 'package:budgetly/src/core/models/account.dart';
+import 'package:budgetly/src/core/models/category.dart';
+import 'package:budgetly/src/core/models/recurring_template.dart';
+import 'package:budgetly/src/core/models/txn.dart';
+import 'package:budgetly/src/core/providers.dart';
 import 'package:uuid/uuid.dart';
 
 /// Holds the decrypted in-memory snapshot and persists (encrypt + write) after
@@ -15,7 +15,7 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
 
   @override
   Future<AppData> build() async {
-    final data = await ref.watch(tallyStoreProvider).load();
+    final data = await ref.watch(budgetlyStoreProvider).load();
     // Materialize any due recurring transactions (with catch-up) on open.
     final result = RecurringMaterializer.run(
       templates: data.recurringTemplates,
@@ -27,7 +27,7 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
       txns: [...data.txns, ...result.newTxns],
       recurringTemplates: result.updatedTemplates,
     );
-    await ref.read(tallyStoreProvider).save(next);
+    await ref.read(budgetlyStoreProvider).save(next);
     return next;
   }
 
@@ -35,7 +35,7 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
 
   Future<void> _commit(AppData next) async {
     state = AsyncData<AppData>(next);
-    await ref.read(tallyStoreProvider).save(next);
+    await ref.read(budgetlyStoreProvider).save(next);
   }
 
   // -- Accounts -----------------------------------------------------------

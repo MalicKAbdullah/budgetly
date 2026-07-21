@@ -1,10 +1,10 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tally/src/core/logic/budgets.dart';
-import 'package:tally/src/core/models/category.dart';
-import 'package:tally/src/core/money.dart';
-import 'package:tally/src/core/providers.dart';
+import 'package:budgetly/src/core/logic/budgets.dart';
+import 'package:budgetly/src/core/models/category.dart';
+import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/providers.dart';
 import 'package:uuid/uuid.dart';
 
 class BudgetsScreen extends ConsumerWidget {

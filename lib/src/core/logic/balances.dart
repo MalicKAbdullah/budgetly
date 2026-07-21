@@ -1,5 +1,5 @@
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/models/txn.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/models/txn.dart';
 
 /// Derives account balances from the opening balance + every transaction that
 /// touches the account. Transfers move money between the owner's own accounts,

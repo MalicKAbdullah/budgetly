@@ -6,11 +6,11 @@ import 'package:flutter/services.dart';
 /// bank/wallet transaction notifications on-device; this reads/clears that
 /// queue and manages the "notification access" permission.
 class CaptureService {
-  static const _ch = MethodChannel('tally/capture');
+  static const _ch = MethodChannel('budgetly/capture');
 
   bool get supported => Platform.isAndroid;
 
-  /// Whether the user has granted notification access to Tally.
+  /// Whether the user has granted notification access to Budgetly.
   Future<bool> isEnabled() async {
     if (!supported) return false;
     return await _ch.invokeMethod<bool>('isEnabled') ?? false;

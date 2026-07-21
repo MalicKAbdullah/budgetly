@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart' show immutable;
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/models/txn.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/models/txn.dart';
 
 /// An expense the owner fronted for others, with money still owed back.
 @immutable

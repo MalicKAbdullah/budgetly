@@ -2,11 +2,11 @@ import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/logic/reimbursements.dart';
-import 'package:tally/src/core/models/account.dart';
-import 'package:tally/src/core/money.dart';
-import 'package:tally/src/core/providers.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/reimbursements.dart';
+import 'package:budgetly/src/core/models/account.dart';
+import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/providers.dart';
 
 class ReceivablesScreen extends ConsumerWidget {
   const ReceivablesScreen({super.key});

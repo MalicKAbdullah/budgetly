@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart' show immutable;
-import 'package:tally/src/core/models/txn.dart';
+import 'package:budgetly/src/core/models/txn.dart';
 
 enum RecurringInterval {
   weekly('Weekly'),

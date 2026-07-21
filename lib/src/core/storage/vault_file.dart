@@ -12,7 +12,7 @@ abstract interface class IVaultFile {
 /// Single encrypted vault file in the app documents directory. Writes go to a
 /// temp file then rename, so an interrupted write can't corrupt the vault.
 final class LocalVaultFile implements IVaultFile {
-  LocalVaultFile({this.fileName = 'tally.vault'});
+  LocalVaultFile({this.fileName = 'budgetly.vault'});
 
   final String fileName;
 

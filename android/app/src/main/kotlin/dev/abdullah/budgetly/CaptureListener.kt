@@ -1,4 +1,4 @@
-package dev.abdullah.tally
+package dev.abdullah.budgetly
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -12,14 +12,14 @@ import org.json.JSONArray
 /**
  * Reads notifications on-device and queues any that look like a bank/wallet
  * transaction (e.g. Meezan SMS from 8079 shown by the messaging app). Nothing
- * is uploaded — the raw text is stored locally for Tally to parse + confirm.
+ * is uploaded — the raw text is stored locally for Budgetly to parse + confirm.
  * The user must grant "notification access" in system settings for this to run.
  */
 class CaptureListener : NotificationListenerService() {
     companion object {
-        const val prefsName = "tally_capture"
+        const val prefsName = "budgetly_capture"
         const val queueKey = "queue"
-        private const val channelId = "tally_capture"
+        private const val channelId = "budgetly_capture"
         private const val maxQueued = 50
 
         private val amountRe =
@@ -79,7 +79,7 @@ class CaptureListener : NotificationListenerService() {
         )
         val n = Notification.Builder(this, channelId)
             .setContentTitle(title)
-            .setContentText("Tap to review and add it in Tally.")
+            .setContentText("Tap to review and add it in Budgetly.")
             .setSmallIcon(android.R.drawable.ic_menu_save)
             .setAutoCancel(true)
             .setContentIntent(pi)

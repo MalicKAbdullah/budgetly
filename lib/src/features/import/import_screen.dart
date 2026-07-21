@@ -2,12 +2,12 @@ import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:tally/src/core/models/account.dart';
-import 'package:tally/src/core/models/category.dart';
-import 'package:tally/src/core/models/txn.dart';
-import 'package:tally/src/core/money.dart';
-import 'package:tally/src/core/providers.dart';
-import 'package:tally/src/features/import/sms_parser.dart';
+import 'package:budgetly/src/core/models/account.dart';
+import 'package:budgetly/src/core/models/category.dart';
+import 'package:budgetly/src/core/models/txn.dart';
+import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/features/import/sms_parser.dart';
 import 'package:uuid/uuid.dart';
 
 /// Auto-capture inbox + manual import. Bank/wallet notifications captured
@@ -50,6 +50,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     final enabled = supported && await cap.isEnabled();
     final pending = enabled ? await cap.getPending() : const <String>[];
     if (mounted) {
+      ref.invalidate(pendingCapturesProvider);
       setState(() {
         _captureSupported = supported;
         _captureEnabled = enabled;
@@ -148,7 +149,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           Text('Add manually', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
           const Text(
-            'Paste a bank SMS or wallet notification. Tally reads it on-device '
+            'Paste a bank SMS or wallet notification. Budgetly reads it on-device '
             'and pulls out the transaction for you to confirm.',
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -209,9 +210,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Let Tally read bank/wallet transaction alerts on-device (e.g. '
+              'Let Budgetly read bank/wallet transaction alerts on-device (e.g. '
               'Meezan SMS) so they appear here to confirm — nothing is '
-              'uploaded. Grant "notification access" to Tally.',
+              'uploaded. Grant "notification access" to Budgetly.',
             ),
             const SizedBox(height: AppSpacing.sm),
             FilledButton.tonalIcon(

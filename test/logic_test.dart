@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tally/src/core/data/app_data.dart';
-import 'package:tally/src/core/logic/balances.dart';
-import 'package:tally/src/core/logic/budgets.dart';
-import 'package:tally/src/core/models/account.dart';
-import 'package:tally/src/core/models/category.dart';
-import 'package:tally/src/core/models/txn.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/balances.dart';
+import 'package:budgetly/src/core/logic/budgets.dart';
+import 'package:budgetly/src/core/models/account.dart';
+import 'package:budgetly/src/core/models/category.dart';
+import 'package:budgetly/src/core/models/txn.dart';
 
 void main() {
   final created = DateTime(2026, 1, 1);

@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart' show immutable;
-import 'package:tally/src/core/models/account.dart';
-import 'package:tally/src/core/models/category.dart';
-import 'package:tally/src/core/models/recurring_template.dart';
-import 'package:tally/src/core/models/txn.dart';
+import 'package:budgetly/src/core/models/account.dart';
+import 'package:budgetly/src/core/models/category.dart';
+import 'package:budgetly/src/core/models/recurring_template.dart';
+import 'package:budgetly/src/core/models/txn.dart';
 
 /// The entire app state as one immutable snapshot — serialized to JSON,
 /// encrypted, and written as a single file on every mutation (mirrors the

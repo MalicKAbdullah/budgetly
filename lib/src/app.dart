@@ -2,16 +2,16 @@ import 'package:core_lock/core_lock.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tally/src/core/providers.dart';
-import 'package:tally/src/core/router.dart';
+import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/core/router.dart';
 
-class TallyApp extends ConsumerWidget {
-  const TallyApp({super.key});
+class BudgetlyApp extends ConsumerWidget {
+  const BudgetlyApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'Tally',
+      title: 'Budgetly',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(Brightness.light, accent: AppColors.emeraldAccent),
       darkTheme: AppTheme.build(

@@ -10,7 +10,7 @@ import 'package:core_storage/core_storage.dart';
 final class DataKeyStore {
   const DataKeyStore(this._secureStorage, {Random? random}) : _random = random;
 
-  static const String storageKey = 'tally_data_key';
+  static const String storageKey = 'budgetly_data_key';
   static const int keyLengthBytes = 32;
 
   final ISecureStorage _secureStorage;
