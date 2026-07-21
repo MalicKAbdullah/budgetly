@@ -145,10 +145,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             for (final raw in _pending) _capturedCard(raw, code),
           ],
           const SizedBox(height: AppSpacing.md),
-          Text(
-            'Add manually',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Add manually', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
           const Text(
             'Paste a bank SMS or wallet notification. Tally reads it on-device '

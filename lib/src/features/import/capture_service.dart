@@ -29,7 +29,9 @@ class CaptureService {
   }
 
   Future<void> remove(String text) async {
-    if (supported) await _ch.invokeMethod<void>('removePending', {'text': text});
+    if (supported) {
+      await _ch.invokeMethod<void>('removePending', {'text': text});
+    }
   }
 
   Future<void> clear() async {

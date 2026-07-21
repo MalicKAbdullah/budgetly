@@ -169,9 +169,7 @@ class _AccountFormState extends State<_AccountForm> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.existing == null ? 'New account' : 'Edit account'),
-        actions: [
-          TextButton(onPressed: _submit, child: const Text('Save')),
-        ],
+        actions: [TextButton(onPressed: _submit, child: const Text('Save'))],
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),

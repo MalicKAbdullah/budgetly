@@ -161,9 +161,7 @@ class _RepayFormState extends State<_RepayForm> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Record repayment'),
-        actions: [
-          TextButton(onPressed: _submit, child: const Text('Record')),
-        ],
+        actions: [TextButton(onPressed: _submit, child: const Text('Record'))],
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),

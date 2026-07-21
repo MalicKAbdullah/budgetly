@@ -161,12 +161,8 @@ class _CategoryFormState extends State<_CategoryForm> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.existing == null ? 'New category' : 'Edit category',
-        ),
-        actions: [
-          TextButton(onPressed: _submit, child: const Text('Save')),
-        ],
+        title: Text(widget.existing == null ? 'New category' : 'Edit category'),
+        actions: [TextButton(onPressed: _submit, child: const Text('Save'))],
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
