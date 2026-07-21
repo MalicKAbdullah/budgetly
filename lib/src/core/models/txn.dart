@@ -14,9 +14,9 @@ enum TxnType {
   final String label;
 
   static TxnType parse(String? raw) => TxnType.values.firstWhere(
-        (t) => t.name == raw,
-        orElse: () => TxnType.expense,
-      );
+    (t) => t.name == raw,
+    orElse: () => TxnType.expense,
+  );
 }
 
 /// A single money movement. [reimbursableMinor] (Phase 2) is reserved for the
@@ -33,21 +33,23 @@ final class Txn {
     this.categoryId,
     this.note = '',
     this.reimbursableMinor = 0,
+    this.reimbursesTxnId,
     required this.createdAt,
   });
 
   factory Txn.fromJson(Map<String, dynamic> json) => Txn(
-        id: json['id'] as String,
-        type: TxnType.parse(json['type'] as String?),
-        amountMinor: (json['amountMinor'] as num).toInt(),
-        date: DateTime.parse(json['date'] as String),
-        accountId: json['accountId'] as String,
-        toAccountId: json['toAccountId'] as String?,
-        categoryId: json['categoryId'] as String?,
-        note: json['note'] as String? ?? '',
-        reimbursableMinor: (json['reimbursableMinor'] as num?)?.toInt() ?? 0,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    type: TxnType.parse(json['type'] as String?),
+    amountMinor: (json['amountMinor'] as num).toInt(),
+    date: DateTime.parse(json['date'] as String),
+    accountId: json['accountId'] as String,
+    toAccountId: json['toAccountId'] as String?,
+    categoryId: json['categoryId'] as String?,
+    note: json['note'] as String? ?? '',
+    reimbursableMinor: (json['reimbursableMinor'] as num?)?.toInt() ?? 0,
+    reimbursesTxnId: json['reimbursesTxnId'] as String?,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 
   final String id;
   final TxnType type;
@@ -57,8 +59,21 @@ final class Txn {
   final String? toAccountId;
   final String? categoryId;
   final String note;
+
+  /// Part of an [TxnType.expense] the owner fronted for others and expects
+  /// back. The owner's real cost is `amountMinor - reimbursableMinor`.
   final int reimbursableMinor;
+
+  /// When set on a [TxnType.income], this income is a **repayment** of the
+  /// expense with this id — it clears that receivable and is excluded from
+  /// regular income totals.
+  final String? reimbursesTxnId;
+
   final DateTime createdAt;
+
+  int get ownShareMinor =>
+      type == TxnType.expense ? amountMinor - reimbursableMinor : amountMinor;
+  bool get isReimbursement => reimbursesTxnId != null;
 
   Txn copyWith({
     TxnType? type,
@@ -69,30 +84,32 @@ final class Txn {
     String? categoryId,
     String? note,
     int? reimbursableMinor,
-  }) =>
-      Txn(
-        id: id,
-        type: type ?? this.type,
-        amountMinor: amountMinor ?? this.amountMinor,
-        date: date ?? this.date,
-        accountId: accountId ?? this.accountId,
-        toAccountId: toAccountId ?? this.toAccountId,
-        categoryId: categoryId ?? this.categoryId,
-        note: note ?? this.note,
-        reimbursableMinor: reimbursableMinor ?? this.reimbursableMinor,
-        createdAt: createdAt,
-      );
+    String? reimbursesTxnId,
+  }) => Txn(
+    id: id,
+    type: type ?? this.type,
+    amountMinor: amountMinor ?? this.amountMinor,
+    date: date ?? this.date,
+    accountId: accountId ?? this.accountId,
+    toAccountId: toAccountId ?? this.toAccountId,
+    categoryId: categoryId ?? this.categoryId,
+    note: note ?? this.note,
+    reimbursableMinor: reimbursableMinor ?? this.reimbursableMinor,
+    reimbursesTxnId: reimbursesTxnId ?? this.reimbursesTxnId,
+    createdAt: createdAt,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type.name,
-        'amountMinor': amountMinor,
-        'date': date.toIso8601String(),
-        'accountId': accountId,
-        if (toAccountId != null) 'toAccountId': toAccountId,
-        if (categoryId != null) 'categoryId': categoryId,
-        'note': note,
-        'reimbursableMinor': reimbursableMinor,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'type': type.name,
+    'amountMinor': amountMinor,
+    'date': date.toIso8601String(),
+    'accountId': accountId,
+    if (toAccountId != null) 'toAccountId': toAccountId,
+    if (categoryId != null) 'categoryId': categoryId,
+    'note': note,
+    'reimbursableMinor': reimbursableMinor,
+    if (reimbursesTxnId != null) 'reimbursesTxnId': reimbursesTxnId,
+    'createdAt': createdAt.toIso8601String(),
+  };
 }

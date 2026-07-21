@@ -80,7 +80,9 @@ final autoBackupServiceProvider = Provider<AutoBackupService>(
 final tallyBackupProducerProvider = Provider<BackupProducer>((ref) {
   return (passphrase) async {
     final data = ref.read(appDataProvider).valueOrNull ?? const AppData();
-    final raw = await ref.read(backupCodecProvider).encode(
+    final raw = await ref
+        .read(backupCodecProvider)
+        .encode(
           data: data,
           passphrase: passphrase!,
           createdAt: ref.read(clockProvider)(),

@@ -12,8 +12,10 @@ class TallyApp extends ConsumerWidget {
       title: 'Tally',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(Brightness.light, accent: AppColors.emeraldAccent),
-      darkTheme:
-          AppTheme.build(Brightness.dark, accent: AppColors.emeraldAccent),
+      darkTheme: AppTheme.build(
+        Brightness.dark,
+        accent: AppColors.emeraldAccent,
+      ),
       themeMode: ThemeMode.system,
       routerConfig: ref.watch(routerProvider),
     );

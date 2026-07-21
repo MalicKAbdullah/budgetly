@@ -13,18 +13,65 @@ void main() {
 
   final data = AppData(
     accounts: [
-      Account(id: 'cash', name: 'Cash', type: AccountType.cash, openingBalanceMinor: 10000, createdAt: created),
-      Account(id: 'bank', name: 'Meezan', type: AccountType.bank, createdAt: created),
+      Account(
+        id: 'cash',
+        name: 'Cash',
+        type: AccountType.cash,
+        openingBalanceMinor: 10000,
+        createdAt: created,
+      ),
+      Account(
+        id: 'bank',
+        name: 'Meezan',
+        type: AccountType.bank,
+        createdAt: created,
+      ),
     ],
     categories: [
-      Category(id: 'groc', name: 'Groceries', monthlyBudgetMinor: 10000, createdAt: created),
+      Category(
+        id: 'groc',
+        name: 'Groceries',
+        monthlyBudgetMinor: 10000,
+        createdAt: created,
+      ),
       Category(id: 'fuel', name: 'Fuel', createdAt: created),
     ],
     txns: [
-      Txn(id: 't1', type: TxnType.expense, amountMinor: 3000, date: DateTime(2026, 7, 5), accountId: 'cash', categoryId: 'groc', createdAt: created),
-      Txn(id: 't2', type: TxnType.income, amountMinor: 50000, date: DateTime(2026, 7, 2), accountId: 'bank', createdAt: created),
-      Txn(id: 't3', type: TxnType.transfer, amountMinor: 20000, date: DateTime(2026, 7, 3), accountId: 'bank', toAccountId: 'cash', createdAt: created),
-      Txn(id: 't4', type: TxnType.expense, amountMinor: 5000, date: lastMonth, accountId: 'bank', categoryId: 'fuel', createdAt: created),
+      Txn(
+        id: 't1',
+        type: TxnType.expense,
+        amountMinor: 3000,
+        date: DateTime(2026, 7, 5),
+        accountId: 'cash',
+        categoryId: 'groc',
+        createdAt: created,
+      ),
+      Txn(
+        id: 't2',
+        type: TxnType.income,
+        amountMinor: 50000,
+        date: DateTime(2026, 7, 2),
+        accountId: 'bank',
+        createdAt: created,
+      ),
+      Txn(
+        id: 't3',
+        type: TxnType.transfer,
+        amountMinor: 20000,
+        date: DateTime(2026, 7, 3),
+        accountId: 'bank',
+        toAccountId: 'cash',
+        createdAt: created,
+      ),
+      Txn(
+        id: 't4',
+        type: TxnType.expense,
+        amountMinor: 5000,
+        date: lastMonth,
+        accountId: 'bank',
+        categoryId: 'fuel',
+        createdAt: created,
+      ),
     ],
   );
 

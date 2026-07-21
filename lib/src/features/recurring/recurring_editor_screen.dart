@@ -5,32 +5,30 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tally/src/core/models/account.dart';
 import 'package:tally/src/core/models/category.dart';
+import 'package:tally/src/core/models/recurring_template.dart';
 import 'package:tally/src/core/models/txn.dart';
 import 'package:tally/src/core/money.dart';
 import 'package:tally/src/core/providers.dart';
 import 'package:uuid/uuid.dart';
 
-class TxnEditorScreen extends ConsumerStatefulWidget {
-  const TxnEditorScreen({this.txnId, super.key});
-  final String? txnId;
+class RecurringEditorScreen extends ConsumerStatefulWidget {
+  const RecurringEditorScreen({this.templateId, super.key});
+  final String? templateId;
 
   @override
-  ConsumerState<TxnEditorScreen> createState() => _TxnEditorScreenState();
+  ConsumerState<RecurringEditorScreen> createState() => _State();
 }
 
-class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
-  static const _uuid = Uuid();
-
+class _State extends ConsumerState<RecurringEditorScreen> {
   final _amount = TextEditingController();
   final _note = TextEditingController();
-  final _reimbursable = TextEditingController();
-  bool _split = false;
   late TxnType _type;
+  late RecurringInterval _interval;
   String? _accountId;
   String? _toAccountId;
   String? _categoryId;
-  late DateTime _date;
-  Txn? _existing;
+  late DateTime _start;
+  RecurringTemplate? _existing;
   String? _error;
 
   @override
@@ -38,27 +36,27 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
     super.initState();
     final data = ref.read(appDataProvider).valueOrNull;
     final accounts = data?.accounts ?? const <Account>[];
-    final existing = widget.txnId == null ? null : data?.txnById(widget.txnId!);
-    _existing = existing;
-    if (existing != null) {
-      _type = existing.type;
-      _amount.text = (existing.amountMinor / 100).toStringAsFixed(
-        existing.amountMinor % 100 == 0 ? 0 : 2,
+    final e = widget.templateId == null
+        ? null
+        : data?.recurringTemplates
+              .where((t) => t.id == widget.templateId)
+              .firstOrNull;
+    _existing = e;
+    if (e != null) {
+      _type = e.type;
+      _interval = e.interval;
+      _amount.text = (e.amountMinor / 100).toStringAsFixed(
+        e.amountMinor % 100 == 0 ? 0 : 2,
       );
-      _accountId = existing.accountId;
-      _toAccountId = existing.toAccountId;
-      _categoryId = existing.categoryId;
-      _date = existing.date;
-      _note.text = existing.note;
-      _split = existing.reimbursableMinor > 0;
-      if (_split) {
-        _reimbursable.text = (existing.reimbursableMinor / 100).toStringAsFixed(
-          existing.reimbursableMinor % 100 == 0 ? 0 : 2,
-        );
-      }
+      _accountId = e.accountId;
+      _toAccountId = e.toAccountId;
+      _categoryId = e.categoryId;
+      _start = e.nextRunDate;
+      _note.text = e.note;
     } else {
       _type = TxnType.expense;
-      _date = DateTime.now();
+      _interval = RecurringInterval.monthly;
+      _start = DateTime.now();
       _accountId = accounts.isNotEmpty ? accounts.first.id : null;
     }
   }
@@ -67,7 +65,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
   void dispose() {
     _amount.dispose();
     _note.dispose();
-    _reimbursable.dispose();
     super.dispose();
   }
 
@@ -86,54 +83,37 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
       setState(() => _error = 'Choose a different destination account.');
       return;
     }
-    var reimbursable = 0;
-    if (_type == TxnType.expense && _split) {
-      final r = Money.parse(_reimbursable.text);
-      if (r == null || r <= 0 || r > minor) {
-        setState(
-          () => _error = 'Owed-back amount must be between 0 and the total.',
-        );
-        return;
-      }
-      reimbursable = r;
-    }
-    final txn = Txn(
-      id: _existing?.id ?? _uuid.v4(),
+    final template = RecurringTemplate(
+      id: _existing?.id ?? const Uuid().v4(),
       type: _type,
       amountMinor: minor,
-      date: _date,
       accountId: _accountId!,
       toAccountId: _type == TxnType.transfer ? _toAccountId : null,
       categoryId: _type == TxnType.expense ? _categoryId : null,
       note: _note.text.trim(),
-      reimbursableMinor: reimbursable,
+      interval: _interval,
+      nextRunDate: _start,
+      active: _existing?.active ?? true,
       createdAt: _existing?.createdAt ?? DateTime.now(),
     );
-    await ref.read(appDataProvider.notifier).saveTxn(txn);
+    await ref.read(appDataProvider.notifier).saveRecurring(template);
     if (mounted) context.pop();
   }
 
   Future<void> _delete() async {
     if (_existing == null) return;
-    await ref.read(appDataProvider.notifier).deleteTxn(_existing!.id);
+    await ref.read(appDataProvider.notifier).deleteRecurring(_existing!.id);
     if (mounted) context.pop();
   }
 
-  String _yourShareLabel(String code) {
-    final total = Money.parse(_amount.text) ?? 0;
-    final owed = Money.parse(_reimbursable.text) ?? 0;
-    final share = (total - owed).clamp(0, total);
-    return 'Your share: ${Money.format(share, code: code)}';
-  }
-
-  Future<void> _pickDate() async {
+  Future<void> _pickStart() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
+      initialDate: _start,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _date = picked);
+    if (picked != null) setState(() => _start = picked);
   }
 
   @override
@@ -144,13 +124,12 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_existing == null ? 'Add transaction' : 'Edit transaction'),
+        title: Text(_existing == null ? 'New recurring' : 'Edit recurring'),
         actions: [
           if (_existing != null)
             IconButton(
               onPressed: _delete,
               icon: const Icon(Icons.delete_outline),
-              tooltip: 'Delete',
             ),
         ],
       ),
@@ -177,7 +156,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                 const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: _amount,
-                  autofocus: _existing == null,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -189,18 +167,28 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                   onChanged: (_) => setState(() => _error = null),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                _AccountDropdown(
-                  label: _type == TxnType.transfer ? 'From account' : 'Account',
-                  accounts: accounts,
-                  value: _accountId,
+                DropdownButtonFormField<String>(
+                  initialValue: _accountId,
+                  decoration: InputDecoration(
+                    labelText: _type == TxnType.transfer
+                        ? 'From account'
+                        : 'Account',
+                  ),
+                  items: [
+                    for (final a in accounts)
+                      DropdownMenuItem(value: a.id, child: Text(a.name)),
+                  ],
                   onChanged: (v) => setState(() => _accountId = v),
                 ),
                 if (_type == TxnType.transfer) ...[
                   const SizedBox(height: AppSpacing.md),
-                  _AccountDropdown(
-                    label: 'To account',
-                    accounts: accounts,
-                    value: _toAccountId,
+                  DropdownButtonFormField<String>(
+                    initialValue: _toAccountId,
+                    decoration: const InputDecoration(labelText: 'To account'),
+                    items: [
+                      for (final a in accounts)
+                        DropdownMenuItem(value: a.id, child: Text(a.name)),
+                    ],
                     onChanged: (v) => setState(() => _toAccountId = v),
                   ),
                 ],
@@ -219,43 +207,23 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                     ],
                     onChanged: (v) => setState(() => _categoryId = v),
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Someone owes me back'),
-                    subtitle: const Text(
-                      'Track the part friends will repay you',
-                    ),
-                    value: _split,
-                    onChanged: (v) => setState(() => _split = v),
-                  ),
-                  if (_split) ...[
-                    TextField(
-                      controller: _reimbursable,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: 'Amount owed back to you',
-                        prefixText: '${data?.currencyCode ?? 'PKR'} ',
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        _yourShareLabel(data?.currencyCode ?? 'PKR'),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
                 ],
                 const SizedBox(height: AppSpacing.md),
+                DropdownButtonFormField<RecurringInterval>(
+                  initialValue: _interval,
+                  decoration: const InputDecoration(labelText: 'Repeats'),
+                  items: [
+                    for (final i in RecurringInterval.values)
+                      DropdownMenuItem(value: i, child: Text(i.label)),
+                  ],
+                  onChanged: (v) => setState(() => _interval = v ?? _interval),
+                ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.calendar_today_outlined),
-                  title: const Text('Date'),
-                  trailing: Text(DateFormat.yMMMd().format(_date)),
-                  onTap: _pickDate,
+                  leading: const Icon(Icons.event_outlined),
+                  title: const Text('Starts / next run'),
+                  trailing: Text(DateFormat.yMMMd().format(_start)),
+                  onTap: _pickStart,
                 ),
                 TextField(
                   controller: _note,
@@ -267,32 +235,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                 FilledButton(onPressed: _save, child: const Text('Save')),
               ],
             ),
-    );
-  }
-}
-
-class _AccountDropdown extends StatelessWidget {
-  const _AccountDropdown({
-    required this.label,
-    required this.accounts,
-    required this.value,
-    required this.onChanged,
-  });
-  final String label;
-  final List<Account> accounts;
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      decoration: InputDecoration(labelText: label),
-      items: [
-        for (final a in accounts)
-          DropdownMenuItem(value: a.id, child: Text(a.name)),
-      ],
-      onChanged: onChanged,
     );
   }
 }

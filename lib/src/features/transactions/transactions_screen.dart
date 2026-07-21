@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tally/src/core/providers.dart';
-import 'package:tally/src/features/dashboard/dashboard_screen.dart' show TxnTile;
+import 'package:tally/src/features/dashboard/dashboard_screen.dart'
+    show TxnTile;
 
 class TransactionsScreen extends ConsumerWidget {
   const TransactionsScreen({super.key});
@@ -21,8 +22,7 @@ class TransactionsScreen extends ConsumerWidget {
               child: Text('No transactions yet. Tap + to add one.'),
             );
           }
-          final txns = [...data.txns]
-            ..sort((a, b) => b.date.compareTo(a.date));
+          final txns = [...data.txns]..sort((a, b) => b.date.compareTo(a.date));
           return ListView.separated(
             itemCount: txns.length,
             separatorBuilder: (_, _) => const Divider(height: 1),

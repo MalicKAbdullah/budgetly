@@ -23,6 +23,8 @@ abstract final class Balances {
   }
 
   /// Sum of balances across all non-archived accounts.
-  static int netWorthMinor(AppData data) => data.activeAccounts
-      .fold(0, (sum, a) => sum + accountBalanceMinor(data, a.id));
+  static int netWorthMinor(AppData data) => data.activeAccounts.fold(
+    0,
+    (sum, a) => sum + accountBalanceMinor(data, a.id),
+  );
 }

@@ -26,9 +26,12 @@ class BudgetsScreen extends ConsumerWidget {
     final code = data?.currencyCode ?? 'PKR';
     final now = DateTime.now();
     final month = DateTime(now.year, now.month);
-    final rows = data == null ? <CategorySpend>[] : Budgets.byCategory(data, month);
-    final uncategorized =
-        data == null ? 0 : Budgets.uncategorizedSpentMinor(data, month);
+    final rows = data == null
+        ? <CategorySpend>[]
+        : Budgets.byCategory(data, month);
+    final uncategorized = data == null
+        ? 0
+        : Budgets.uncategorizedSpentMinor(data, month);
     final warn = AppColors.warning(Theme.of(context).brightness);
 
     return Scaffold(
@@ -43,9 +46,7 @@ class BudgetsScreen extends ConsumerWidget {
         ],
       ),
       body: rows.isEmpty && uncategorized == 0
-          ? const Center(
-              child: Text('Add categories to track budgets. Tap +.'),
-            )
+          ? const Center(child: Text('Add categories to track budgets. Tap +.'))
           : ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
@@ -71,7 +72,9 @@ class BudgetsScreen extends ConsumerWidget {
                       onTap: () => _edit(
                         context,
                         ref,
-                        data!.categories.firstWhere((x) => x.id == c.categoryId),
+                        data!.categories.firstWhere(
+                          (x) => x.id == c.categoryId,
+                        ),
                       ),
                       onLongPress: () => ref
                           .read(appDataProvider.notifier)
@@ -87,8 +90,10 @@ class BudgetsScreen extends ConsumerWidget {
                   ),
                 const Padding(
                   padding: EdgeInsets.all(AppSpacing.sm),
-                  child: Text('Tap to edit · long-press to delete.',
-                      style: TextStyle(fontSize: 12)),
+                  child: Text(
+                    'Tap to edit · long-press to delete.',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -117,7 +122,8 @@ class _CategoryDialogState extends State<_CategoryDialog> {
       text: e == null || e.monthlyBudgetMinor == 0
           ? ''
           : (e.monthlyBudgetMinor / 100).toStringAsFixed(
-              e.monthlyBudgetMinor % 100 == 0 ? 0 : 2),
+              e.monthlyBudgetMinor % 100 == 0 ? 0 : 2,
+            ),
     );
   }
 

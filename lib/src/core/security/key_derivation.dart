@@ -22,6 +22,5 @@ final class Argon2KeyDerivation implements IKeyDerivation {
   Future<Uint8List> deriveKey({
     required String passphrase,
     required Uint8List salt,
-  }) =>
-      _service.deriveKey(masterPassword: passphrase, salt: salt);
+  }) => _service.deriveKey(masterPassword: passphrase, salt: salt);
 }

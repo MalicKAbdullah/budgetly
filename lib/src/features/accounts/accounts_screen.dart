@@ -10,7 +10,11 @@ import 'package:uuid/uuid.dart';
 class AccountsScreen extends ConsumerWidget {
   const AccountsScreen({super.key});
 
-  Future<void> _edit(BuildContext context, WidgetRef ref, Account? existing) async {
+  Future<void> _edit(
+    BuildContext context,
+    WidgetRef ref,
+    Account? existing,
+  ) async {
     final result = await showDialog<Account>(
       context: context,
       builder: (_) => _AccountDialog(existing: existing),
@@ -70,11 +74,11 @@ class AccountsScreen extends ConsumerWidget {
                     leading: Icon(switch (a.type) {
                       AccountType.cash => Icons.payments_outlined,
                       AccountType.bank => Icons.account_balance_outlined,
-                      AccountType.wallet => Icons.account_balance_wallet_outlined,
+                      AccountType.wallet =>
+                        Icons.account_balance_wallet_outlined,
                       AccountType.card => Icons.credit_card_outlined,
                     }),
-                    title: Text(a.name +
-                        (a.archived ? '  (archived)' : '')),
+                    title: Text(a.name + (a.archived ? '  (archived)' : '')),
                     subtitle: Text(a.type.label),
                     trailing: Text(
                       Money.format(
@@ -122,7 +126,8 @@ class _AccountDialogState extends State<_AccountDialog> {
       text: e == null || e.openingBalanceMinor == 0
           ? ''
           : (e.openingBalanceMinor / 100).toStringAsFixed(
-              e.openingBalanceMinor % 100 == 0 ? 0 : 2),
+              e.openingBalanceMinor % 100 == 0 ? 0 : 2,
+            ),
     );
     _type = e?.type ?? AccountType.cash;
     _archived = e?.archived ?? false;

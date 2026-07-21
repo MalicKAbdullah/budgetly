@@ -12,9 +12,9 @@ final class TallyStore {
     required CipherService cipher,
     required DataKeyStore keyStore,
     required IVaultFile file,
-  })  : _cipher = cipher,
-        _keyStore = keyStore,
-        _file = file;
+  }) : _cipher = cipher,
+       _keyStore = keyStore,
+       _file = file;
 
   final CipherService _cipher;
   final DataKeyStore _keyStore;

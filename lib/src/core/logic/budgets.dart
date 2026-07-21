@@ -36,20 +36,33 @@ abstract final class Budgets {
   static bool inMonth(DateTime d, DateTime month) =>
       d.year == month.year && d.month == month.month;
 
-  static int spentInMonthMinor(AppData data, String categoryId, DateTime month) =>
-      data.txns
-          .where((t) =>
-              t.type == TxnType.expense &&
-              t.categoryId == categoryId &&
-              inMonth(t.date, month))
-          .fold(0, (sum, t) => sum + t.amountMinor);
+  // "Spend" uses the owner's own share (amount minus any reimbursable part),
+  // so money fronted for friends isn't counted as the owner's spending.
+  static int spentInMonthMinor(
+    AppData data,
+    String categoryId,
+    DateTime month,
+  ) => data.txns
+      .where(
+        (t) =>
+            t.type == TxnType.expense &&
+            t.categoryId == categoryId &&
+            inMonth(t.date, month),
+      )
+      .fold(0, (sum, t) => sum + t.ownShareMinor);
 
   static int totalSpentInMonthMinor(AppData data, DateTime month) => data.txns
       .where((t) => t.type == TxnType.expense && inMonth(t.date, month))
-      .fold(0, (sum, t) => sum + t.amountMinor);
+      .fold(0, (sum, t) => sum + t.ownShareMinor);
 
+  // Repayments (income tagged reimbursesTxnId) are not real income.
   static int totalIncomeInMonthMinor(AppData data, DateTime month) => data.txns
-      .where((t) => t.type == TxnType.income && inMonth(t.date, month))
+      .where(
+        (t) =>
+            t.type == TxnType.income &&
+            !t.isReimbursement &&
+            inMonth(t.date, month),
+      )
       .fold(0, (sum, t) => sum + t.amountMinor);
 
   static int totalMonthlyBudgetMinor(AppData data) =>
@@ -58,15 +71,18 @@ abstract final class Budgets {
   /// Per-category spend for [month], most-spent first. Includes categories
   /// with zero spend so their budgets still show.
   static List<CategorySpend> byCategory(AppData data, DateTime month) {
-    final rows = data.categories
-        .map((c) => CategorySpend(
-              categoryId: c.id,
-              name: c.name,
-              budgetMinor: c.monthlyBudgetMinor,
-              spentMinor: spentInMonthMinor(data, c.id, month),
-            ))
-        .toList()
-      ..sort((a, b) => b.spentMinor.compareTo(a.spentMinor));
+    final rows =
+        data.categories
+            .map(
+              (c) => CategorySpend(
+                categoryId: c.id,
+                name: c.name,
+                budgetMinor: c.monthlyBudgetMinor,
+                spentMinor: spentInMonthMinor(data, c.id, month),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.spentMinor.compareTo(a.spentMinor));
     return rows;
   }
 
@@ -74,10 +90,12 @@ abstract final class Budgets {
   static int uncategorizedSpentMinor(AppData data, DateTime month) {
     final ids = data.categories.map((c) => c.id).toSet();
     return data.txns
-        .where((t) =>
-            t.type == TxnType.expense &&
-            inMonth(t.date, month) &&
-            !ids.contains(t.categoryId))
-        .fold(0, (sum, t) => sum + t.amountMinor);
+        .where(
+          (t) =>
+              t.type == TxnType.expense &&
+              inMonth(t.date, month) &&
+              !ids.contains(t.categoryId),
+        )
+        .fold(0, (sum, t) => sum + t.ownShareMinor);
   }
 }

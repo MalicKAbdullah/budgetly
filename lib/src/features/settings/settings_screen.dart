@@ -20,17 +20,39 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.account_balance_wallet_outlined),
-              title: const Text('Accounts'),
-              subtitle: const Text('Cash, bank, wallets'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/accounts'),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.account_balance_wallet_outlined),
+                  title: const Text('Accounts'),
+                  subtitle: const Text('Cash, bank, wallets'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/accounts'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.repeat),
+                  title: const Text('Recurring'),
+                  subtitle: const Text('Salary, rent, subscriptions'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/recurring'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.sms_outlined),
+                  title: const Text('Import from message'),
+                  subtitle: const Text('Paste a bank SMS / wallet alert'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/import'),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          Text('Automatic backup',
-              style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Automatic backup',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: AppSpacing.sm),
           Card(
             child: AutoBackupSection(
@@ -111,7 +133,8 @@ class SettingsScreen extends ConsumerWidget {
     } on BackupException catch (e) {
       final msg = switch (e.error) {
         BackupError.wrongPassphrase => 'Wrong passphrase.',
-        BackupError.unsupportedVersion => 'This backup is from a newer version.',
+        BackupError.unsupportedVersion =>
+          'This backup is from a newer version.',
         BackupError.invalidFormat => 'That is not a valid Tally backup.',
       };
       messenger.showSnackBar(SnackBar(content: Text(msg)));

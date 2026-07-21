@@ -11,11 +11,11 @@ final class Category {
   });
 
   factory Category.fromJson(Map<String, dynamic> json) => Category(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        monthlyBudgetMinor: (json['monthlyBudgetMinor'] as num?)?.toInt() ?? 0,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    monthlyBudgetMinor: (json['monthlyBudgetMinor'] as num?)?.toInt() ?? 0,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 
   final String id;
   final String name;
@@ -25,16 +25,16 @@ final class Category {
   bool get hasBudget => monthlyBudgetMinor > 0;
 
   Category copyWith({String? name, int? monthlyBudgetMinor}) => Category(
-        id: id,
-        name: name ?? this.name,
-        monthlyBudgetMinor: monthlyBudgetMinor ?? this.monthlyBudgetMinor,
-        createdAt: createdAt,
-      );
+    id: id,
+    name: name ?? this.name,
+    monthlyBudgetMinor: monthlyBudgetMinor ?? this.monthlyBudgetMinor,
+    createdAt: createdAt,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'monthlyBudgetMinor': monthlyBudgetMinor,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'monthlyBudgetMinor': monthlyBudgetMinor,
+    'createdAt': createdAt.toIso8601String(),
+  };
 }

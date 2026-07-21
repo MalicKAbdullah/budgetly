@@ -22,8 +22,8 @@ final class BackupCodec {
   const BackupCodec({
     required IKeyDerivation keyDerivation,
     required CipherService cipher,
-  })  : _kdf = keyDerivation,
-        _cipher = cipher;
+  }) : _kdf = keyDerivation,
+       _cipher = cipher;
 
   final IKeyDerivation _kdf;
   final CipherService _cipher;

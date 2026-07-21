@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:tally/src/core/models/account.dart';
 import 'package:tally/src/core/models/category.dart';
+import 'package:tally/src/core/models/recurring_template.dart';
 import 'package:tally/src/core/models/txn.dart';
 
 /// The entire app state as one immutable snapshot — serialized to JSON,
@@ -16,27 +17,33 @@ final class AppData {
     this.accounts = const <Account>[],
     this.categories = const <Category>[],
     this.txns = const <Txn>[],
+    this.recurringTemplates = const <RecurringTemplate>[],
   });
 
   factory AppData.fromJson(Map<String, dynamic> json) => AppData(
-        currencyCode: json['currencyCode'] as String? ?? 'PKR',
-        accounts: (json['accounts'] as List<dynamic>? ?? const [])
-            .map((e) => Account.fromJson(e as Map<String, dynamic>))
+    currencyCode: json['currencyCode'] as String? ?? 'PKR',
+    accounts: (json['accounts'] as List<dynamic>? ?? const [])
+        .map((e) => Account.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    categories: (json['categories'] as List<dynamic>? ?? const [])
+        .map((e) => Category.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    txns: (json['txns'] as List<dynamic>? ?? const [])
+        .map((e) => Txn.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    recurringTemplates:
+        (json['recurringTemplates'] as List<dynamic>? ?? const [])
+            .map((e) => RecurringTemplate.fromJson(e as Map<String, dynamic>))
             .toList(),
-        categories: (json['categories'] as List<dynamic>? ?? const [])
-            .map((e) => Category.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        txns: (json['txns'] as List<dynamic>? ?? const [])
-            .map((e) => Txn.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+  );
 
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   final String currencyCode;
   final List<Account> accounts;
   final List<Category> categories;
   final List<Txn> txns;
+  final List<RecurringTemplate> recurringTemplates;
 
   List<Account> get activeAccounts =>
       accounts.where((a) => !a.archived).toList();
@@ -69,19 +76,21 @@ final class AppData {
     List<Account>? accounts,
     List<Category>? categories,
     List<Txn>? txns,
-  }) =>
-      AppData(
-        currencyCode: currencyCode ?? this.currencyCode,
-        accounts: accounts ?? this.accounts,
-        categories: categories ?? this.categories,
-        txns: txns ?? this.txns,
-      );
+    List<RecurringTemplate>? recurringTemplates,
+  }) => AppData(
+    currencyCode: currencyCode ?? this.currencyCode,
+    accounts: accounts ?? this.accounts,
+    categories: categories ?? this.categories,
+    txns: txns ?? this.txns,
+    recurringTemplates: recurringTemplates ?? this.recurringTemplates,
+  );
 
   Map<String, dynamic> toJson() => {
-        'schemaVersion': schemaVersion,
-        'currencyCode': currencyCode,
-        'accounts': accounts.map((a) => a.toJson()).toList(),
-        'categories': categories.map((c) => c.toJson()).toList(),
-        'txns': txns.map((t) => t.toJson()).toList(),
-      };
+    'schemaVersion': schemaVersion,
+    'currencyCode': currencyCode,
+    'accounts': accounts.map((a) => a.toJson()).toList(),
+    'categories': categories.map((c) => c.toJson()).toList(),
+    'txns': txns.map((t) => t.toJson()).toList(),
+    'recurringTemplates': recurringTemplates.map((t) => t.toJson()).toList(),
+  };
 }

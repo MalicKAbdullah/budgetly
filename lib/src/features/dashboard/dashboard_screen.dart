@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:tally/src/core/data/app_data.dart';
 import 'package:tally/src/core/logic/balances.dart';
 import 'package:tally/src/core/logic/budgets.dart';
+import 'package:tally/src/core/logic/reimbursements.dart';
 import 'package:tally/src/core/models/txn.dart';
 import 'package:tally/src/core/money.dart';
 import 'package:tally/src/core/providers.dart';
@@ -41,26 +42,46 @@ class _Body extends StatelessWidget {
     final code = data.currencyCode;
     final spent = Budgets.totalSpentInMonthMinor(data, month);
     final income = Budgets.totalIncomeInMonthMinor(data, month);
-    final categories = Budgets.byCategory(data, month)
-        .where((c) => c.hasBudget || c.spentMinor > 0)
-        .toList();
+    final categories = Budgets.byCategory(
+      data,
+      month,
+    ).where((c) => c.hasBudget || c.spentMinor > 0).toList();
     final recent = [...data.txns]..sort((a, b) => b.date.compareTo(a.date));
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        Text(DateFormat.yMMMM().format(month),
-            style: Theme.of(context).textTheme.titleMedium),
+        Text(
+          DateFormat.yMMMM().format(month),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: AppSpacing.sm),
         _SummaryCard(spentMinor: spent, incomeMinor: income, code: code),
         const SizedBox(height: AppSpacing.md),
         _NetWorthCard(data: data, code: code),
+        if (Reimbursements.totalOwedMinor(data) > 0) ...[
+          const SizedBox(height: AppSpacing.md),
+          Card(
+            color: Theme.of(context).colorScheme.secondaryContainer,
+            child: ListTile(
+              leading: const Icon(Icons.handshake_outlined),
+              title: const Text('Owed to you'),
+              trailing: Text(
+                Money.format(Reimbursements.totalOwedMinor(data), code: code),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () => context.push('/receivables'),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         Row(
           children: [
             Expanded(
-              child: Text('Budgets',
-                  style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                'Budgets',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             TextButton(
               onPressed: () => context.go('/budgets'),
@@ -88,8 +109,10 @@ class _Body extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text('Recent',
-                  style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                'Recent',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             TextButton(
               onPressed: () => context.go('/transactions'),
@@ -108,8 +131,7 @@ class _Body extends StatelessWidget {
           Card(
             child: Column(
               children: [
-                for (final t in recent.take(6))
-                  TxnTile(txn: t, data: data),
+                for (final t in recent.take(6)) TxnTile(txn: t, data: data),
               ],
             ),
           ),
@@ -129,8 +151,10 @@ class _EmptyAccounts extends StatelessWidget {
           children: [
             const Icon(Icons.account_balance_wallet_outlined, size: 56),
             const SizedBox(height: AppSpacing.md),
-            Text('Add your first account',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Add your first account',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: AppSpacing.sm),
             const Text(
               'Create Cash, your bank, or a wallet to start tracking where '
@@ -168,8 +192,14 @@ class _SummaryCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
-            _Stat(label: 'Spent', value: Money.format(spentMinor, code: code)),
-            _Stat(label: 'Income', value: Money.format(incomeMinor, code: code)),
+            _Stat(
+              label: 'Spent',
+              value: Money.format(spentMinor, code: code),
+            ),
+            _Stat(
+              label: 'Income',
+              value: Money.format(incomeMinor, code: code),
+            ),
             _Stat(
               label: 'Net',
               value: Money.format(net, code: code),
@@ -199,10 +229,10 @@ class _Stat extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             value,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(color: color, fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -227,15 +257,16 @@ class _NetWorthCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text('Total balance',
-                      style: Theme.of(context).textTheme.bodyMedium),
+                  child: Text(
+                    'Total balance',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                 ),
                 Text(
                   Money.format(Balances.netWorthMinor(data), code: code),
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -246,9 +277,12 @@ class _NetWorthCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(child: Text(a.name)),
-                    Text(Money.format(
+                    Text(
+                      Money.format(
                         Balances.accountBalanceMinor(data, a.id),
-                        code: code)),
+                        code: code,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -269,7 +303,9 @@ class _BudgetRow extends StatelessWidget {
     final warn = AppColors.warning(Theme.of(context).brightness);
     return Padding(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -281,8 +317,8 @@ class _BudgetRow extends StatelessWidget {
                     ? '${Money.format(spend.spentMinor, code: code)} / ${Money.format(spend.budgetMinor, code: code)}'
                     : Money.format(spend.spentMinor, code: code),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: spend.overBudget ? warn : null,
-                    ),
+                  color: spend.overBudget ? warn : null,
+                ),
               ),
             ],
           ),

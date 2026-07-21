@@ -5,14 +5,14 @@ import 'package:intl/intl.dart';
 /// parses it for display and input.
 abstract final class Money {
   static String _symbol(String code) => switch (code) {
-        'PKR' => 'Rs ',
-        'USD' => '\$',
-        'EUR' => '€',
-        'GBP' => '£',
-        'AED' => 'AED ',
-        'SAR' => 'SAR ',
-        _ => '$code ',
-      };
+    'PKR' => 'Rs ',
+    'USD' => '\$',
+    'EUR' => '€',
+    'GBP' => '£',
+    'AED' => 'AED ',
+    'SAR' => 'SAR ',
+    _ => '$code ',
+  };
 
   /// Formats [minor] units as e.g. `Rs 1,250` (or `Rs 1,250.50` when there
   /// are cents). Negative values keep their sign.
