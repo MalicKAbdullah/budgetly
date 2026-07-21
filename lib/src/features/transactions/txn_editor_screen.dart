@@ -207,6 +207,7 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                 if (_type == TxnType.expense) ...[
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     initialValue: _categoryId,
                     decoration: const InputDecoration(labelText: 'Category'),
                     items: [
@@ -286,6 +287,7 @@ class _AccountDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: [

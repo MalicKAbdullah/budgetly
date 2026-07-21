@@ -168,6 +168,7 @@ class _State extends ConsumerState<RecurringEditorScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _accountId,
                   decoration: InputDecoration(
                     labelText: _type == TxnType.transfer
@@ -183,6 +184,7 @@ class _State extends ConsumerState<RecurringEditorScreen> {
                 if (_type == TxnType.transfer) ...[
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _toAccountId,
                     decoration: const InputDecoration(labelText: 'To account'),
                     items: [
@@ -195,6 +197,7 @@ class _State extends ConsumerState<RecurringEditorScreen> {
                 if (_type == TxnType.expense) ...[
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     initialValue: _categoryId,
                     decoration: const InputDecoration(labelText: 'Category'),
                     items: [
@@ -210,6 +213,7 @@ class _State extends ConsumerState<RecurringEditorScreen> {
                 ],
                 const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<RecurringInterval>(
+                  isExpanded: true,
                   initialValue: _interval,
                   decoration: const InputDecoration(labelText: 'Repeats'),
                   items: [

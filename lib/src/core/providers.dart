@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:core_backup/core_backup.dart';
 import 'package:core_crypto/core_crypto.dart';
+import 'package:core_lock/core_lock.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -74,6 +75,33 @@ final autoBackupServiceProvider = Provider<AutoBackupService>(
     fileExtension: BackupCodec.fileExtension,
     now: () => ref.read(clockProvider)(),
   ),
+);
+
+// -- App lock (core_lock) -------------------------------------------------
+
+/// Unavailable by default; main() overrides with the local_auth impl.
+final deviceAuthProvider = Provider<IDeviceAuth>(
+  (_) => const UnavailableDeviceAuth(),
+);
+
+/// Whether the lock was on at launch — read in main() before runApp so the
+/// first frame is already locked (no unlocked flash).
+final appLockEnabledOnLaunchProvider = Provider<bool>((_) => false);
+
+final lockControllerProvider = ChangeNotifierProvider<LockController>(
+  (ref) => LockController(
+    deviceAuth: ref.watch(deviceAuthProvider),
+    storage: ref.watch(secureStorageProvider),
+    clock: () => ref.read(clockProvider)(),
+    storageKey: 'tally_app_lock_enabled',
+    appName: 'Tally',
+    enabled: ref.watch(appLockEnabledOnLaunchProvider),
+  ),
+);
+
+/// Settings availability: whether the device can show an auth prompt.
+final deviceAuthAvailableProvider = FutureProvider<bool>(
+  (ref) => ref.watch(deviceAuthProvider).canAuthenticate(),
 );
 
 /// Produces the encrypted `.tallybackup` bytes for the current dataset.

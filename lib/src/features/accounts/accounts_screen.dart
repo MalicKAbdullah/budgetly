@@ -176,6 +176,7 @@ class _AccountDialogState extends State<_AccountDialog> {
           ),
           const SizedBox(height: AppSpacing.sm),
           DropdownButtonFormField<AccountType>(
+            isExpanded: true,
             initialValue: _type,
             decoration: const InputDecoration(labelText: 'Type'),
             items: [

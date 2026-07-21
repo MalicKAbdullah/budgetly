@@ -127,6 +127,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: _accountId,
               decoration: const InputDecoration(labelText: 'Account'),
               items: [
@@ -138,6 +139,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             if (c.direction == TxnDirection.debit) ...[
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String?>(
+                isExpanded: true,
                 initialValue: _categoryId,
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: [

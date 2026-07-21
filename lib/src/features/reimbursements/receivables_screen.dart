@@ -174,6 +174,7 @@ class _RepayDialogState extends State<_RepayDialog> {
           ),
           const SizedBox(height: AppSpacing.sm),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _accountId,
             decoration: const InputDecoration(labelText: 'Into account'),
             items: [

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.2.0+2
+version: 0.3.0+3
 
 environment:
   sdk: ^3.11.1
@@ -47,27 +47,32 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_crypto
-      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
+      ref: 6e13519785f39ea66e055747de82be2c04b5b9e4
   core_storage:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
+      ref: 6e13519785f39ea66e055747de82be2c04b5b9e4
   core_theme:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_theme
-      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
+      ref: 6e13519785f39ea66e055747de82be2c04b5b9e4
   core_ui:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
-      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
+      ref: 6e13519785f39ea66e055747de82be2c04b5b9e4
   core_backup:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_backup
-      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
+      ref: 6e13519785f39ea66e055747de82be2c04b5b9e4
+  core_lock:
+    git:
+      url: https://github.com/MalicKAbdullah/secure-suite-core.git
+      path: core_lock
+      ref: 6e13519785f39ea66e055747de82be2c04b5b9e4
 
   cupertino_icons: ^1.0.8
 

@@ -11,11 +11,7 @@ class HomeShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: shell,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/txn/new'),
-        tooltip: 'Add transaction',
-        child: const Icon(Icons.add),
-      ),
+      // No global FAB — each tab owns its own primary action (context-aware).
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
         onDestinationSelected: (i) =>

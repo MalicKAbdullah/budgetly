@@ -49,6 +49,10 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
+          Text('Security', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.sm),
+          _AppLockTile(),
+          const SizedBox(height: AppSpacing.md),
           Text(
             'Automatic backup',
             style: Theme.of(context).textTheme.titleSmall,
@@ -168,6 +172,38 @@ class SettingsScreen extends ConsumerWidget {
             child: const Text('Restore'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Require unlock" toggle backed by core_lock. Disabled (with a hint) when the
+/// device has no biometrics or screen lock set up.
+class _AppLockTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(lockControllerProvider);
+    final available = ref.watch(deviceAuthAvailableProvider).valueOrNull;
+    return Card(
+      child: SwitchListTile(
+        secondary: const Icon(Icons.fingerprint),
+        title: const Text('Require unlock'),
+        subtitle: Text(
+          available == false
+              ? 'Set up a fingerprint or screen lock on your device first'
+              : 'Ask for fingerprint / device PIN to open Tally',
+        ),
+        value: controller.isEnabled,
+        onChanged: available == false
+            ? null
+            : (v) async {
+                final ok = await controller.setEnabled(v);
+                if (!ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Authentication cancelled.')),
+                  );
+                }
+              },
       ),
     );
   }

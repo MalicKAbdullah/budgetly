@@ -11,19 +11,28 @@ class TransactionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(appDataProvider);
+    final hasAccounts = async.valueOrNull?.accounts.isNotEmpty ?? false;
     return Scaffold(
       appBar: AppBar(title: const Text('Activity')),
+      floatingActionButton: hasAccounts
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/txn/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('Transaction'),
+            )
+          : null,
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
         data: (data) {
           if (data.txns.isEmpty) {
             return const Center(
-              child: Text('No transactions yet. Tap + to add one.'),
+              child: Text('No transactions yet — add one with the + button.'),
             );
           }
           final txns = [...data.txns]..sort((a, b) => b.date.compareTo(a.date));
           return ListView.separated(
+            padding: const EdgeInsets.only(bottom: 96),
             itemCount: txns.length,
             separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (_, i) => TxnTile(

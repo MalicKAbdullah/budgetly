@@ -17,8 +17,16 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(appDataProvider);
+    final hasAccounts = async.valueOrNull?.accounts.isNotEmpty ?? false;
     return Scaffold(
       appBar: AppBar(title: const Text('Tally')),
+      floatingActionButton: hasAccounts
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/txn/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('Transaction'),
+            )
+          : null,
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Could not load data:\n$e')),
@@ -49,7 +57,12 @@ class _Body extends StatelessWidget {
     final recent = [...data.txns]..sort((a, b) => b.date.compareTo(a.date));
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        96,
+      ),
       children: [
         Text(
           DateFormat.yMMMM().format(month),

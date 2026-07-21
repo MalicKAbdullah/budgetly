@@ -35,20 +35,25 @@ class BudgetsScreen extends ConsumerWidget {
     final warn = AppColors.warning(Theme.of(context).brightness);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Budgets'),
-        actions: [
-          IconButton(
-            onPressed: () => _edit(context, ref, null),
-            icon: const Icon(Icons.add),
-            tooltip: 'Add category',
-          ),
-        ],
+      appBar: AppBar(title: const Text('Budgets')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _edit(context, ref, null),
+        icon: const Icon(Icons.add),
+        label: const Text('Category'),
       ),
       body: rows.isEmpty && uncategorized == 0
-          ? const Center(child: Text('Add categories to track budgets. Tap +.'))
+          ? const Center(
+              child: Text(
+                'Add categories to track budgets — use the + button.',
+              ),
+            )
           : ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                96,
+              ),
               children: [
                 for (final c in rows)
                   Card(

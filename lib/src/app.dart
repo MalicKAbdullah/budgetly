@@ -1,6 +1,8 @@
+import 'package:core_lock/core_lock.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tally/src/core/providers.dart';
 import 'package:tally/src/core/router.dart';
 
 class TallyApp extends ConsumerWidget {
@@ -18,6 +20,12 @@ class TallyApp extends ConsumerWidget {
       ),
       themeMode: ThemeMode.system,
       routerConfig: ref.watch(routerProvider),
+      // App-lock cover sits above the router; the navigator stays mounted
+      // underneath so unlocking restores exactly where the user was.
+      builder: (context, child) => AppLockGate(
+        controller: ref.watch(lockControllerProvider),
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }
