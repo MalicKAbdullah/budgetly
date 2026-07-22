@@ -56,6 +56,10 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           AppLockSettings(controller: ref.watch(lockControllerProvider)),
           const SizedBox(height: AppSpacing.md),
+          Text('Updates', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.sm),
+          const _UpdateCheckTile(),
+          const SizedBox(height: AppSpacing.md),
           Text(
             'Automatic backup',
             style: Theme.of(context).textTheme.titleSmall,
@@ -239,6 +243,81 @@ class _AutoCaptureTileState extends ConsumerState<_AutoCaptureTile>
           // the actual grant. We re-read on resume.
           await ref.read(captureServiceProvider).openSettings();
         },
+      ),
+    );
+  }
+}
+
+/// "Check for updates on open" toggle + a manual "Check now" action, backed by
+/// core_update. On by default; the only network call the app makes.
+class _UpdateCheckTile extends ConsumerStatefulWidget {
+  const _UpdateCheckTile();
+
+  @override
+  ConsumerState<_UpdateCheckTile> createState() => _UpdateCheckTileState();
+}
+
+class _UpdateCheckTileState extends ConsumerState<_UpdateCheckTile> {
+  bool _checking = false;
+
+  Future<void> _checkNow() async {
+    setState(() => _checking = true);
+    final info = await ref.read(updateServiceProvider).check();
+    if (!mounted) return;
+    setState(() => _checking = false);
+    final messenger = ScaffoldMessenger.of(context);
+    if (info == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("You're on the latest version.")),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Update available · v${info.version}'),
+          action: SnackBarAction(
+            label: 'Update',
+            onPressed: () => ref.read(updateServiceProvider).openDownload(info),
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final autoCheck = ref.watch(updateAutoCheckProvider).valueOrNull ?? true;
+    return Card(
+      child: Column(
+        children: [
+          SwitchListTile(
+            secondary: const Icon(Icons.system_update_alt),
+            title: const Text('Check for updates on open'),
+            subtitle: const Text(
+              'Looks for a new release on GitHub. Nothing is uploaded.',
+            ),
+            value: autoCheck,
+            onChanged: (v) async {
+              await ref
+                  .read(secureStorageProvider)
+                  .write(key: updateAutoCheckKey, value: v ? 'true' : 'false');
+              ref.invalidate(updateAutoCheckProvider);
+              ref.invalidate(updateCheckProvider);
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.refresh),
+            title: const Text('Check now'),
+            trailing: _checking
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.chevron_right),
+            onTap: _checking ? null : _checkNow,
+          ),
+        ],
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:core_backup/core_backup.dart';
 import 'package:core_crypto/core_crypto.dart';
 import 'package:core_lock/core_lock.dart';
 import 'package:core_storage/core_storage.dart';
+import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
@@ -117,6 +118,31 @@ final deviceAuthAvailableProvider = FutureProvider<bool>(
 final captureServiceProvider = Provider<CaptureService>(
   (_) => CaptureService(),
 );
+
+// -- In-app update (core_update) ------------------------------------------
+
+final updateServiceProvider = Provider<IUpdateService>(
+  (_) => GithubUpdateService(owner: 'MalicKAbdullah', repo: 'budgetly'),
+);
+
+/// Secure-storage key for the auto-check preference.
+const String updateAutoCheckKey = 'budgetly_update_autocheck';
+
+/// Auto-check preference (persisted; on by default). Toggle in Settings.
+final updateAutoCheckProvider = FutureProvider<bool>(
+  (ref) async =>
+      await ref.watch(secureStorageProvider).read(key: updateAutoCheckKey) !=
+      'false',
+);
+
+/// The pending update (null when disabled, up to date, or offline).
+final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
+  if (!await ref.watch(updateAutoCheckProvider.future)) return null;
+  return ref.watch(updateServiceProvider).check();
+});
+
+/// Session-only dismissal of the update banner.
+final updateDismissedProvider = StateProvider<bool>((_) => false);
 
 /// Captured-but-unreviewed notification texts. Invalidate after any
 /// accept/dismiss and on app resume so the dashboard banner stays current.
