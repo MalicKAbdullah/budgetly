@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/recurring.dart';
@@ -15,6 +17,7 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
 
   @override
   Future<AppData> build() async {
+    ref.onDispose(() => _backupDebounce?.cancel());
     final data = await ref.watch(budgetlyStoreProvider).load();
     // Materialize any due recurring transactions (with catch-up) on open.
     final result = RecurringMaterializer.run(
@@ -33,9 +36,26 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
 
   AppData get _data => state.requireValue;
 
+  Timer? _backupDebounce;
+
   Future<void> _commit(AppData next) async {
     state = AsyncData<AppData>(next);
     await ref.read(budgetlyStoreProvider).save(next);
+    _scheduleAutoBackup();
+  }
+
+  /// Auto-backup on change: once edits settle (debounced), write an encrypted
+  /// backup — but only when a folder + passphrase are configured. Silent;
+  /// failures surface via the Settings backup banner. Same-day backups reuse
+  /// one dated file, so frequent edits don't pile up files.
+  void _scheduleAutoBackup() {
+    _backupDebounce?.cancel();
+    _backupDebounce = Timer(const Duration(seconds: 5), () async {
+      final service = ref.read(autoBackupServiceProvider);
+      final config = await service.loadConfig();
+      if (!config.isReady) return;
+      await service.backupNow(ref.read(budgetlyBackupProducerProvider));
+    });
   }
 
   // -- Accounts -----------------------------------------------------------

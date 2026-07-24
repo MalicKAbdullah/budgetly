@@ -11,6 +11,14 @@ import 'package:budgetly/src/core/logic/reimbursements.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/features/dashboard/dashboard_period.dart';
+import 'package:budgetly/src/features/statement/statement_pdf_service.dart';
+import 'package:printing/printing.dart';
+
+/// Selected dashboard time window (session-only; defaults to this month).
+final dashboardPeriodProvider = StateProvider<DashboardPeriod>(
+  (_) => DashboardPeriod.thisMonth,
+);
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -20,7 +28,17 @@ class DashboardScreen extends ConsumerWidget {
     final async = ref.watch(appDataProvider);
     final hasAccounts = async.valueOrNull?.accounts.isNotEmpty ?? false;
     return Scaffold(
-      appBar: AppBar(title: const Text('Budgetly')),
+      appBar: AppBar(
+        title: const Text('Budgetly'),
+        actions: [
+          if (hasAccounts)
+            IconButton(
+              tooltip: 'Export statement (PDF)',
+              icon: const Icon(Icons.description_outlined),
+              onPressed: () => _exportStatement(context, ref),
+            ),
+        ],
+      ),
       floatingActionButton: hasAccounts
           ? FloatingActionButton.extended(
               onPressed: () => context.push('/txn/new'),
@@ -34,6 +52,25 @@ class DashboardScreen extends ConsumerWidget {
         data: (data) => _Body(data: data),
       ),
     );
+  }
+
+  Future<void> _exportStatement(BuildContext context, WidgetRef ref) async {
+    final data = ref.read(appDataProvider).valueOrNull;
+    if (data == null) return;
+    final period = ref.read(dashboardPeriodProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await StatementPdfService.build(
+        data: data,
+        period: period,
+        now: DateTime.now(),
+      );
+      await Printing.sharePdf(bytes: bytes, filename: 'budgetly-statement.pdf');
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not create the statement.')),
+      );
+    }
   }
 }
 
@@ -121,22 +158,33 @@ class _NotifyTriggerState extends ConsumerState<_NotifyTrigger> {
 class _CategoryBreakdown extends StatelessWidget {
   const _CategoryBreakdown({
     required this.data,
-    required this.month,
+    required this.start,
+    required this.end,
     required this.code,
   });
   final AppData data;
-  final DateTime month;
+  final DateTime start;
+  final DateTime end;
   final String code;
 
   @override
   Widget build(BuildContext context) {
-    final rows =
-        Budgets.byCategory(data, month).where((c) => c.spentMinor > 0).toList()
-          ..sort((a, b) => b.spentMinor.compareTo(a.spentMinor));
-    if (rows.isEmpty) return const SizedBox.shrink();
-    final top = rows.take(5).toList();
-    final max = top.first.spentMinor;
+    final byCat = <String, int>{};
+    for (final t in data.txns) {
+      if (t.type != TxnType.expense) continue;
+      if (!DashboardFlow.inRange(t.date, start, end)) continue;
+      final key = t.categoryId ?? '';
+      byCat[key] = (byCat[key] ?? 0) + t.ownShareMinor;
+    }
+    if (byCat.isEmpty) return const SizedBox.shrink();
+    final sorted = byCat.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final top = sorted.take(5).toList();
+    final max = top.first.value;
     final scheme = Theme.of(context).colorScheme;
+    String nameFor(String id) => id.isEmpty
+        ? 'Uncategorized'
+        : (data.categoryById(id)?.name ?? 'Uncategorized');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -163,13 +211,13 @@ class _CategoryBreakdown extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              c.name,
+                              nameFor(c.key),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Text(
-                            Money.format(c.spentMinor, code: code),
+                            Money.format(c.value, code: code),
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
@@ -178,7 +226,7 @@ class _CategoryBreakdown extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: max == 0 ? 0 : c.spentMinor / max,
+                          value: max == 0 ? 0 : c.value / max,
                           minHeight: 6,
                           backgroundColor: scheme.surfaceContainerHighest,
                           color: scheme.primary,
@@ -195,25 +243,126 @@ class _CategoryBreakdown extends StatelessWidget {
   }
 }
 
-class _Body extends StatelessWidget {
+/// The consistent period filter chips used across the dashboard.
+class _PeriodFilter extends StatelessWidget {
+  const _PeriodFilter({required this.selected, required this.onSelected});
+  final DashboardPeriod selected;
+  final ValueChanged<DashboardPeriod> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final p in DashboardPeriod.values) ...[
+            ChoiceChip(
+              label: Text(p.label),
+              selected: selected == p,
+              onSelected: (_) => onSelected(p),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Money in and out of each account over the selected period.
+class _AccountFlowCard extends StatelessWidget {
+  const _AccountFlowCard({required this.flows, required this.code});
+  final List<AccountFlow> flows;
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    if (flows.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final inColor = scheme.primary;
+    final outColor = AppColors.warning(Theme.of(context).brightness);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Money in & out',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              for (final f in flows)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          f.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '+${Money.format(f.inMinor, code: code)}',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: inColor),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        '-${Money.format(f.outMinor, code: code)}',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: outColor),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Body extends ConsumerWidget {
   const _Body({required this.data});
   final AppData data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (data.accounts.isEmpty) {
       return _EmptyAccounts();
     }
     final now = DateTime.now();
     final month = DateTime(now.year, now.month);
     final code = data.currencyCode;
-    final spent = Budgets.totalSpentInMonthMinor(data, month);
-    final income = Budgets.totalIncomeInMonthMinor(data, month);
-    final categories = Budgets.byCategory(
+    final period = ref.watch(dashboardPeriodProvider);
+    final (start, end) = period.range(now);
+
+    final spent = DashboardFlow.spentInRange(data, start, end);
+    final income = DashboardFlow.incomeInRange(data, start, end);
+    final buckets = DashboardFlow.spendBuckets(data, period, now);
+    final flows = DashboardFlow.byAccount(
+      data,
+      start,
+      end,
+    ).where((f) => f.inMinor > 0 || f.outMinor > 0).toList();
+    // Budgets stay monthly (a budget is a per-month figure).
+    final budgetRows = Budgets.byCategory(
       data,
       month,
     ).where((c) => c.hasBudget || c.spentMinor > 0).toList();
     final recent = [...data.txns]..sort((a, b) => b.date.compareTo(a.date));
+    final owedCount = Reimbursements.outstanding(data).length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -226,27 +375,45 @@ class _Body extends StatelessWidget {
         _NotifyTrigger(data: data),
         const _UpdateCard(),
         const _CaptureBanner(),
-        Text(
-          DateFormat.yMMMM().format(month),
-          style: Theme.of(context).textTheme.titleMedium,
+        _PeriodFilter(
+          selected: period,
+          onSelected: (p) =>
+              ref.read(dashboardPeriodProvider.notifier).state = p,
         ),
         const SizedBox(height: AppSpacing.sm),
         _SummaryCard(spentMinor: spent, incomeMinor: income, code: code),
         const SizedBox(height: AppSpacing.md),
-        _SpendChart(data: data, code: code),
+        _SpendChart(
+          buckets: buckets,
+          title: '${period.label} · spending',
+          code: code,
+        ),
         const SizedBox(height: AppSpacing.md),
-        _CategoryBreakdown(data: data, month: month, code: code),
+        _AccountFlowCard(flows: flows, code: code),
+        _CategoryBreakdown(data: data, start: start, end: end, code: code),
         _NetWorthCard(data: data, code: code),
-        if (Reimbursements.totalOwedMinor(data) > 0) ...[
+        if (owedCount > 0) ...[
           const SizedBox(height: AppSpacing.md),
           Card(
-            color: Theme.of(context).colorScheme.secondaryContainer,
             child: ListTile(
-              leading: const Icon(Icons.handshake_outlined),
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
+                child: Icon(
+                  Icons.handshake_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
               title: const Text('Owed to you'),
+              subtitle: Text(
+                owedCount == 1 ? '1 person owes you' : '$owedCount to collect',
+              ),
               trailing: Text(
                 Money.format(Reimbursements.totalOwedMinor(data), code: code),
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               onTap: () => context.push('/receivables'),
             ),
@@ -267,7 +434,7 @@ class _Body extends StatelessWidget {
             ),
           ],
         ),
-        if (categories.isEmpty)
+        if (budgetRows.isEmpty)
           const Card(
             child: Padding(
               padding: EdgeInsets.all(AppSpacing.md),
@@ -278,7 +445,7 @@ class _Body extends StatelessWidget {
           Card(
             child: Column(
               children: [
-                for (final c in categories.take(5))
+                for (final c in budgetRows.take(5))
                   _BudgetRow(spend: c, code: code),
               ],
             ),
@@ -428,30 +595,22 @@ class _Stat extends StatelessWidget {
   }
 }
 
-/// Daily spending over the last 14 days — thin bars, single ink color,
-/// today highlighted, selective labels (peak + today only).
+/// Spending chart for the selected period — thin bars (a day each for "this
+/// month", a month each for the multi-month windows), peak highlighted.
 class _SpendChart extends StatelessWidget {
-  const _SpendChart({required this.data, required this.code});
-  final AppData data;
+  const _SpendChart({
+    required this.buckets,
+    required this.title,
+    required this.code,
+  });
+  final List<SpendBucket> buckets;
+  final String title;
   final String code;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final days = [
-      for (var i = 13; i >= 0; i--) today.subtract(Duration(days: i)),
-    ];
-    final totals = {for (final d in days) d: 0};
-    for (final t in data.txns) {
-      if (t.type != TxnType.expense) continue;
-      final d = DateTime(t.date.year, t.date.month, t.date.day);
-      if (totals.containsKey(d)) {
-        totals[d] = totals[d]! + (t.amountMinor - t.reimbursableMinor);
-      }
-    }
-    final maxMinor = totals.values.fold(0, (a, b) => a > b ? a : b);
+    final maxMinor = buckets.fold(0, (a, b) => a > b.minor ? a : b.minor);
     if (maxMinor == 0) return const SizedBox.shrink();
 
     return Card(
@@ -461,7 +620,7 @@ class _SpendChart extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Last 14 days · spending',
+              title,
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
@@ -472,17 +631,17 @@ class _SpendChart extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  for (final d in days) ...[
+                  for (var i = 0; i < buckets.length; i++) ...[
                     Expanded(
                       child: Tooltip(
                         message:
-                            '${DateFormat.MMMd().format(d)}: '
-                            '${Money.format(totals[d]!, code: code)}',
+                            '${buckets[i].label}: '
+                            '${Money.format(buckets[i].minor, code: code)}',
                         triggerMode: TooltipTriggerMode.tap,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            if (totals[d] == maxMinor)
+                            if (buckets[i].minor == maxMinor)
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 2),
                                 child: FittedBox(
@@ -498,11 +657,11 @@ class _SpendChart extends StatelessWidget {
                                 ),
                               ),
                             Container(
-                              height: totals[d]! == 0
+                              height: buckets[i].minor == 0
                                   ? 3
-                                  : 8 + 68 * (totals[d]! / maxMinor),
+                                  : 8 + 68 * (buckets[i].minor / maxMinor),
                               decoration: BoxDecoration(
-                                color: d == today
+                                color: buckets[i].minor == maxMinor
                                     ? scheme.primary
                                     : scheme.primary.withValues(alpha: 0.45),
                                 borderRadius: const BorderRadius.vertical(
@@ -514,7 +673,7 @@ class _SpendChart extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (d != days.last) const SizedBox(width: 3),
+                    if (i != buckets.length - 1) const SizedBox(width: 3),
                   ],
                 ],
               ),
@@ -524,13 +683,13 @@ class _SpendChart extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  DateFormat.MMMd().format(days.first),
+                  buckets.first.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
                 Text(
-                  'today',
+                  buckets.last.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
