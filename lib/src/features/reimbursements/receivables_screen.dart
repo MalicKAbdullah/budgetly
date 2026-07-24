@@ -84,7 +84,7 @@ class ReceivablesScreen extends ConsumerWidget {
     AppData data,
     Receivable r,
   ) async {
-    final result = await Navigator.of(context).push<(int, String)>(
+    final result = await Navigator.of(context).push<(int, String, DateTime)>(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => _RepayForm(
@@ -101,7 +101,7 @@ class ReceivablesScreen extends ConsumerWidget {
             r.expense.id,
             amountMinor: result.$1,
             accountId: result.$2,
-            date: DateTime.now(),
+            date: result.$3,
           );
     }
   }
@@ -125,6 +125,7 @@ class _RepayFormState extends State<_RepayForm> {
   late final TextEditingController _amount;
   String? _accountId;
   String? _error;
+  late DateTime _date;
 
   @override
   void initState() {
@@ -135,12 +136,23 @@ class _RepayFormState extends State<_RepayForm> {
       ),
     );
     _accountId = widget.accounts.isNotEmpty ? widget.accounts.first.id : null;
+    _date = DateTime.now();
   }
 
   @override
   void dispose() {
     _amount.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) setState(() => _date = picked);
   }
 
   void _submit() {
@@ -153,7 +165,7 @@ class _RepayFormState extends State<_RepayForm> {
       setState(() => _error = 'Choose the account it went into.');
       return;
     }
-    Navigator.pop(context, (minor, _accountId!));
+    Navigator.pop(context, (minor, _accountId!, _date));
   }
 
   @override
@@ -191,6 +203,26 @@ class _RepayFormState extends State<_RepayForm> {
                 DropdownMenuItem(value: a.id, child: Text(a.name)),
             ],
             onChanged: (v) => setState(() => _accountId = v),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Repaid on',
+              border: OutlineInputBorder(),
+            ),
+            child: InkWell(
+              onTap: _pickDate,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(DateFormat.yMMMMd().format(_date)),
+                    const Icon(Icons.calendar_today_outlined, size: 20),
+                  ],
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           FilledButton(

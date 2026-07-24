@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/models/txn.dart';
@@ -107,6 +108,8 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
       categoryId: _type == TxnType.expense ? _categoryId : null,
       note: _note.text.trim(),
       reimbursableMinor: reimbursable,
+      // Preserve the repayment→expense link when editing a repayment.
+      reimbursesTxnId: _existing?.reimbursesTxnId,
       createdAt: _existing?.createdAt ?? DateTime.now(),
     );
     await ref.read(appDataProvider.notifier).saveTxn(txn);
@@ -136,11 +139,90 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
     if (picked != null) setState(() => _date = picked);
   }
 
+  /// The reimbursement link: on a reimbursable expense, its repayments; on a
+  /// repayment, the original expense it settles. Null when neither applies.
+  Widget? _linkSection(AppData data) {
+    final existing = _existing;
+    if (existing == null) return null;
+    final code = data.currencyCode;
+
+    // This txn is a repayment → link back to the original expense.
+    final reimbursesId = existing.reimbursesTxnId;
+    if (reimbursesId != null) {
+      final orig = data.txnById(reimbursesId);
+      if (orig == null) return null;
+      final title = orig.note.isNotEmpty
+          ? orig.note
+          : (data.categoryById(orig.categoryId)?.name ?? 'Expense');
+      return Card(
+        child: ListTile(
+          leading: const Icon(Icons.link),
+          title: const Text('Repayment for'),
+          subtitle: Text('$title · ${DateFormat.yMMMd().format(orig.date)}'),
+          trailing: Text(Money.format(orig.amountMinor, code: code)),
+          onTap: () => context.push('/txn/${orig.id}'),
+        ),
+      );
+    }
+
+    // This txn is a reimbursable expense → list its repayments.
+    if (existing.type == TxnType.expense && existing.reimbursableMinor > 0) {
+      final repayments =
+          data.txns.where((t) => t.reimbursesTxnId == existing.id).toList()
+            ..sort((a, b) => a.date.compareTo(b.date));
+      final repaid = repayments.fold(0, (s, t) => s + t.amountMinor);
+      final owed = (existing.reimbursableMinor - repaid).clamp(
+        0,
+        existing.amountMinor,
+      );
+      return Card(
+        child: Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.handshake_outlined),
+              title: const Text('Owed back to you'),
+              subtitle: Text(
+                '${Money.format(existing.reimbursableMinor, code: code)} '
+                'marked · ${Money.format(repaid, code: code)} repaid',
+              ),
+              trailing: Text(
+                '${Money.format(owed, code: code)} left',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            if (repayments.isEmpty)
+              const ListTile(
+                dense: true,
+                title: Text('No repayments recorded yet.'),
+              )
+            else
+              for (final rp in repayments)
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.south_west, size: 20),
+                  title: const Text('Repayment'),
+                  subtitle: Text(
+                    '${DateFormat.yMMMd().format(rp.date)} · '
+                    '${data.accountById(rp.accountId)?.name ?? ''}',
+                  ),
+                  trailing: Text(
+                    '+${Money.format(rp.amountMinor, code: code)}',
+                  ),
+                  onTap: () => context.push('/txn/${rp.id}'),
+                ),
+          ],
+        ),
+      );
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = ref.watch(appDataProvider).valueOrNull;
     final accounts = data?.accounts ?? const <Account>[];
     final categories = data?.categories ?? const <Category>[];
+    final linkSection = data == null ? null : _linkSection(data);
 
     return Scaffold(
       appBar: AppBar(
@@ -264,6 +346,10 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                     labelText: 'Note (optional)',
                   ),
                 ),
+                if (linkSection != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  linkSection,
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 FilledButton(onPressed: _save, child: const Text('Save')),
               ],
