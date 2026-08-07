@@ -19,8 +19,16 @@ enum TxnType {
   );
 }
 
-/// A single money movement. [reimbursableMinor] (Phase 2) is reserved for the
-/// split/"owed back" feature; it defaults to 0 and is ignored for now.
+/// A single money movement.
+///
+/// Money invariants the whole app relies on:
+/// - [amountMinor] is always the cash that really moved through the owner's
+///   own account, so account balances are simply the sum of it.
+/// - [ownShareMinor] is what the movement actually cost the owner: their cash
+///   out, minus the part others owe them back, plus the part of their share
+///   someone else fronted.
+/// - A **settlement** ([isSettlement]) only passes money through the owner to
+///   clear a debt. It moves cash but is never income and never spending.
 @immutable
 final class Txn {
   const Txn({
@@ -33,6 +41,9 @@ final class Txn {
     this.categoryId,
     this.note = '',
     this.reimbursableMinor = 0,
+    this.payableMinor = 0,
+    this.counterparty = '',
+    this.settlement = false,
     this.reimbursesTxnId,
     required this.createdAt,
   });
@@ -47,12 +58,18 @@ final class Txn {
     categoryId: json['categoryId'] as String?,
     note: json['note'] as String? ?? '',
     reimbursableMinor: (json['reimbursableMinor'] as num?)?.toInt() ?? 0,
+    payableMinor: (json['payableMinor'] as num?)?.toInt() ?? 0,
+    counterparty: json['counterparty'] as String? ?? '',
+    settlement: json['settlement'] as bool? ?? false,
     reimbursesTxnId: json['reimbursesTxnId'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 
   final String id;
   final TxnType type;
+
+  /// Cash that moved through [accountId]. For a bill someone else fronted in
+  /// full this is 0 — no cash left the owner's account.
   final int amountMinor;
   final DateTime date;
   final String accountId;
@@ -61,19 +78,46 @@ final class Txn {
   final String note;
 
   /// Part of an [TxnType.expense] the owner fronted for others and expects
-  /// back. The owner's real cost is `amountMinor - reimbursableMinor`.
+  /// back — a receivable. Always ≤ [amountMinor].
   final int reimbursableMinor;
 
-  /// When set on a [TxnType.income], this income is a **repayment** of the
-  /// expense with this id — it clears that receivable and is excluded from
-  /// regular income totals.
+  /// Part of the owner's own share of an [TxnType.expense] that somebody else
+  /// paid for them — a payable. It is the owner's cost even though no cash of
+  /// theirs moved, and it is a debt until settled.
+  final int payableMinor;
+
+  /// Free-text name of the other person in a split or settlement. Empty when
+  /// unnamed (older data), which the People view groups as "Unspecified".
+  final String counterparty;
+
+  /// True when this transaction only passes money through the owner to clear a
+  /// debt: receiving a repayment (income) or paying someone back (expense).
+  final bool settlement;
+
+  /// Legacy per-transaction settlement link: when set, this transaction repays
+  /// the expense with this id specifically.
   final String? reimbursesTxnId;
 
   final DateTime createdAt;
 
-  int get ownShareMinor =>
-      type == TxnType.expense ? amountMinor - reimbursableMinor : amountMinor;
-  bool get isReimbursement => reimbursesTxnId != null;
+  /// A settlement is money in transit — never income, never spending.
+  bool get isSettlement => settlement || reimbursesTxnId != null;
+
+  /// Kept for older call sites; a repayment is just a settlement.
+  bool get isReimbursement => isSettlement;
+
+  bool get isSplit => reimbursableMinor > 0 || payableMinor > 0;
+
+  /// What this movement actually cost (expense) or earned (income) the owner.
+  /// Zero for settlements and transfers, which move money without changing it.
+  int get ownShareMinor {
+    if (isSettlement) return 0;
+    return switch (type) {
+      TxnType.expense => amountMinor - reimbursableMinor + payableMinor,
+      TxnType.income => amountMinor,
+      TxnType.transfer => 0,
+    };
+  }
 
   Txn copyWith({
     TxnType? type,
@@ -84,6 +128,9 @@ final class Txn {
     String? categoryId,
     String? note,
     int? reimbursableMinor,
+    int? payableMinor,
+    String? counterparty,
+    bool? settlement,
     String? reimbursesTxnId,
   }) => Txn(
     id: id,
@@ -95,6 +142,9 @@ final class Txn {
     categoryId: categoryId ?? this.categoryId,
     note: note ?? this.note,
     reimbursableMinor: reimbursableMinor ?? this.reimbursableMinor,
+    payableMinor: payableMinor ?? this.payableMinor,
+    counterparty: counterparty ?? this.counterparty,
+    settlement: settlement ?? this.settlement,
     reimbursesTxnId: reimbursesTxnId ?? this.reimbursesTxnId,
     createdAt: createdAt,
   );
@@ -109,6 +159,9 @@ final class Txn {
     if (categoryId != null) 'categoryId': categoryId,
     'note': note,
     'reimbursableMinor': reimbursableMinor,
+    if (payableMinor != 0) 'payableMinor': payableMinor,
+    if (counterparty.isNotEmpty) 'counterparty': counterparty,
+    if (settlement) 'settlement': true,
     if (reimbursesTxnId != null) 'reimbursesTxnId': reimbursesTxnId,
     'createdAt': createdAt.toIso8601String(),
   };

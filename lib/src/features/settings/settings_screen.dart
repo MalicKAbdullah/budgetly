@@ -32,6 +32,14 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.people_outline),
+                  title: const Text('People'),
+                  subtitle: const Text('Split expenses and settling up'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/people'),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.repeat),
                   title: const Text('Recurring'),
                   subtitle: const Text('Salary, rent, subscriptions'),

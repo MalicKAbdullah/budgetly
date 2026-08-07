@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/captures.dart';
+import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/logic/recurring.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/captured_notice.dart';
@@ -125,23 +126,31 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
     _data.copyWith(txns: _data.txns.where((t) => t.id != id).toList()),
   );
 
-  /// Records money received back for a reimbursable expense: an income tagged
-  /// to that expense, so it clears the receivable (not counted as income).
-  Future<void> markReimbursed(
-    String expenseId, {
+  /// Records a settlement with one person: cash really moves (so balances
+  /// change) but it is flagged as a settlement, so it counts as neither income
+  /// nor spending. It clears that person's oldest open debts first — see
+  /// [PeopleLedger] for the allocation rule.
+  Future<void> settleWithPerson({
+    required String person,
+    required DebtKind kind,
     required int amountMinor,
     required String accountId,
     required DateTime date,
   }) {
     final txn = Txn(
       id: _uuid.v4(),
-      type: TxnType.income,
+      // Money coming back to the owner clears "they owe you"; money going out
+      // clears "you owe them".
+      type: kind == DebtKind.owedToYou ? TxnType.income : TxnType.expense,
       amountMinor: amountMinor,
       date: date,
       accountId: accountId,
-      note: 'Repayment',
-      reimbursesTxnId: expenseId,
-      createdAt: DateTime.now(),
+      counterparty: person,
+      settlement: true,
+      note: kind == DebtKind.owedToYou
+          ? 'Settlement received'
+          : 'Settlement paid',
+      createdAt: ref.read(clockProvider)(),
     );
     return _commit(_data.copyWith(txns: [..._data.txns, txn]));
   }

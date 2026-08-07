@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
+import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/logic/recurring.dart';
-import 'package:budgetly/src/core/logic/reimbursements.dart';
 import 'package:budgetly/src/core/models/recurring_template.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 
@@ -10,7 +10,7 @@ void main() {
   final created = DateTime(2026, 1, 1);
   final month = DateTime(2026, 7);
 
-  group('Reimbursements', () {
+  group('Split expenses', () {
     // Dinner: paid 6000, but 4000 was fronted for friends (own share 2000).
     final dinner = Txn(
       id: 'dinner',
@@ -31,11 +31,11 @@ void main() {
 
     test('outstanding is the full reimbursable until repaid', () {
       final data = AppData(txns: [dinner]);
-      expect(Reimbursements.totalOwedMinor(data), 4000);
-      expect(Reimbursements.outstanding(data).length, 1);
+      expect(PeopleLedger.totalOwedToYouMinor(data), 4000);
+      expect(PeopleLedger.openPositions(data).length, 1);
     });
 
-    test('a repayment clears the receivable and is not income', () {
+    test('a legacy repayment clears the receivable and is not income', () {
       final repay = Txn(
         id: 'r1',
         type: TxnType.income,
@@ -46,7 +46,7 @@ void main() {
         createdAt: created,
       );
       final data = AppData(txns: [dinner, repay]);
-      expect(Reimbursements.totalOwedMinor(data), 0);
+      expect(PeopleLedger.totalOwedToYouMinor(data), 0);
       expect(Budgets.totalIncomeInMonthMinor(data, month), 0);
     });
   });

@@ -7,7 +7,9 @@ import 'package:budgetly/src/features/dashboard/dashboard_screen.dart';
 import 'package:budgetly/src/features/capture/capture_screen.dart';
 import 'package:budgetly/src/features/recurring/recurring_editor_screen.dart';
 import 'package:budgetly/src/features/recurring/recurring_screen.dart';
-import 'package:budgetly/src/features/reimbursements/receivables_screen.dart';
+import 'package:budgetly/src/core/logic/people.dart';
+import 'package:budgetly/src/features/people/people_screen.dart';
+import 'package:budgetly/src/features/people/person_screen.dart';
 import 'package:budgetly/src/features/settings/settings_screen.dart';
 import 'package:budgetly/src/features/transactions/transactions_screen.dart';
 import 'package:budgetly/src/features/transactions/txn_editor_screen.dart';
@@ -60,9 +62,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             TxnEditorScreen(txnId: state.pathParameters['id']),
       ),
       GoRoute(path: '/accounts', builder: (_, _) => const AccountsScreen()),
+      GoRoute(path: '/people', builder: (_, _) => const PeopleScreen()),
       GoRoute(
-        path: '/receivables',
-        builder: (_, _) => const ReceivablesScreen(),
+        path: '/people/:key',
+        builder: (_, state) => PersonScreen(
+          personKey: PeopleLedger.keyFromRoute(state.pathParameters['key']!),
+        ),
       ),
       GoRoute(path: '/recurring', builder: (_, _) => const RecurringScreen()),
       GoRoute(

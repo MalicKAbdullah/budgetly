@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:budgetly/src/app.dart';
+import 'package:budgetly/src/core/data/period_filter_store.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/features/notifications/budget_notifier.dart';
 
@@ -20,6 +21,9 @@ Future<void> main() async {
     lockKey,
   );
 
+  // The date window the owner last chose, so every screen opens on it.
+  final periodFilter = await PeriodFilterStore.read(storage);
+
   // Local notifications (budget alerts + monthly summary). Tapping just opens
   // the app; the dashboard handles routing.
   final notify = LocalNotify();
@@ -32,6 +36,7 @@ Future<void> main() async {
         deviceAuthProvider.overrideWithValue(LocalAuthDeviceAuth()),
         appLockEnabledOnLaunchProvider.overrideWithValue(lockEnabled),
         appLockBiometricOnLaunchProvider.overrideWithValue(biometricEnabled),
+        periodFilterOnLaunchProvider.overrideWithValue(periodFilter),
         notifyProvider.overrideWithValue(notify),
       ],
       child: const BudgetlyApp(),

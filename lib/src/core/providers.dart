@@ -12,6 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/data/app_data_notifier.dart';
+import 'package:budgetly/src/core/data/period_filter_store.dart';
+import 'package:budgetly/src/core/models/period_filter.dart';
 import 'package:budgetly/src/core/security/key_derivation.dart';
 import 'package:budgetly/src/core/storage/data_key_store.dart';
 import 'package:budgetly/src/core/storage/budgetly_store.dart';
@@ -54,6 +56,31 @@ final budgetlyStoreProvider = Provider<BudgetlyStore>(
 final appDataProvider = AsyncNotifierProvider<AppDataNotifier, AppData>(
   AppDataNotifier.new,
 );
+
+// -- Shared date filter ----------------------------------------------------
+
+/// The filter restored from storage before the first frame; main() overrides
+/// it so the dashboard opens on the window the owner last chose.
+final periodFilterOnLaunchProvider = Provider<PeriodFilter>(
+  (_) => const PeriodFilter.thisMonth(),
+);
+
+/// The one date window every screen reads — dashboard, activity, statement.
+final periodFilterProvider =
+    NotifierProvider<PeriodFilterController, PeriodFilter>(
+      PeriodFilterController.new,
+    );
+
+final class PeriodFilterController extends Notifier<PeriodFilter> {
+  @override
+  PeriodFilter build() => ref.read(periodFilterOnLaunchProvider);
+
+  /// Applies the window everywhere and remembers it for next launch.
+  Future<void> select(PeriodFilter filter) async {
+    state = filter;
+    await PeriodFilterStore.write(ref.read(secureStorageProvider), filter);
+  }
+}
 
 // -- Backup ---------------------------------------------------------------
 

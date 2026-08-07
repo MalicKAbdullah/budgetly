@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/features/transactions/split_fields.dart';
+import 'package:budgetly/src/features/transactions/txn_links.dart';
 import 'package:uuid/uuid.dart';
 
 class TxnEditorScreen extends ConsumerStatefulWidget {
@@ -24,8 +27,11 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
 
   final _amount = TextEditingController();
   final _note = TextEditingController();
-  final _reimbursable = TextEditingController();
+  final _share = TextEditingController();
+  final _person = TextEditingController();
+
   bool _split = false;
+  DebtKind _splitKind = DebtKind.owedToYou;
   late TxnType _type;
   String? _accountId;
   String? _toAccountId;
@@ -41,26 +47,30 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
     final accounts = data?.accounts ?? const <Account>[];
     final existing = widget.txnId == null ? null : data?.txnById(widget.txnId!);
     _existing = existing;
-    if (existing != null) {
-      _type = existing.type;
-      _amount.text = (existing.amountMinor / 100).toStringAsFixed(
-        existing.amountMinor % 100 == 0 ? 0 : 2,
-      );
-      _accountId = existing.accountId;
-      _toAccountId = existing.toAccountId;
-      _categoryId = existing.categoryId;
-      _date = existing.date;
-      _note.text = existing.note;
-      _split = existing.reimbursableMinor > 0;
-      if (_split) {
-        _reimbursable.text = (existing.reimbursableMinor / 100).toStringAsFixed(
-          existing.reimbursableMinor % 100 == 0 ? 0 : 2,
-        );
-      }
-    } else {
+    if (existing == null) {
       _type = TxnType.expense;
       _date = DateTime.now();
       _accountId = accounts.isNotEmpty ? accounts.first.id : null;
+      return;
+    }
+    _type = existing.type;
+    _amount.text = Money.toInput(existing.amountMinor);
+    _accountId = existing.accountId;
+    _toAccountId = existing.toAccountId;
+    _categoryId = existing.categoryId;
+    _date = existing.date;
+    _note.text = existing.note;
+    _person.text = existing.counterparty;
+    _split = existing.isSplit;
+    if (_split) {
+      _splitKind = existing.payableMinor > 0
+          ? DebtKind.youOwe
+          : DebtKind.owedToYou;
+      _share.text = Money.toInput(
+        existing.payableMinor > 0
+            ? existing.payableMinor
+            : existing.reimbursableMinor,
+      );
     }
   }
 
@@ -68,13 +78,17 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
   void dispose() {
     _amount.dispose();
     _note.dispose();
-    _reimbursable.dispose();
+    _share.dispose();
+    _person.dispose();
     super.dispose();
   }
 
+  bool get _isSettlement => _existing?.isSettlement ?? false;
+  bool get _canSplit => _type == TxnType.expense && !_isSettlement;
+
   Future<void> _save() async {
-    final minor = Money.parse(_amount.text);
-    if (minor == null || minor <= 0) {
+    final paid = Money.parse(_amount.text);
+    if (paid == null) {
       setState(() => _error = 'Enter a valid amount.');
       return;
     }
@@ -87,28 +101,50 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
       setState(() => _error = 'Choose a different destination account.');
       return;
     }
+
     var reimbursable = 0;
-    if (_type == TxnType.expense && _split) {
-      final r = Money.parse(_reimbursable.text);
-      if (r == null || r <= 0 || r > minor) {
-        setState(
-          () => _error = 'Owed-back amount must be between 0 and the total.',
-        );
+    var payable = 0;
+    if (_canSplit && _split) {
+      final share = Money.parse(_share.text);
+      if (share == null || share <= 0) {
+        setState(() => _error = 'Enter how much the split is for.');
         return;
       }
-      reimbursable = r;
+      if (_splitKind == DebtKind.owedToYou) {
+        if (share > paid) {
+          setState(
+            () => _error = 'The part owed back cannot exceed what you paid.',
+          );
+          return;
+        }
+        reimbursable = share;
+      } else {
+        payable = share;
+      }
     }
+    // A bill somebody else fronted in full moves no cash of the owner's, so
+    // zero is a legitimate amount — but only then.
+    if (paid <= 0 && payable == 0) {
+      setState(() => _error = 'Enter a valid amount.');
+      return;
+    }
+
     final txn = Txn(
       id: _existing?.id ?? _uuid.v4(),
       type: _type,
-      amountMinor: minor,
+      amountMinor: paid,
       date: _date,
       accountId: _accountId!,
       toAccountId: _type == TxnType.transfer ? _toAccountId : null,
       categoryId: _type == TxnType.expense ? _categoryId : null,
       note: _note.text.trim(),
       reimbursableMinor: reimbursable,
-      // Preserve the repayment→expense link when editing a repayment.
+      payableMinor: payable,
+      counterparty: _isSettlement || (_canSplit && _split)
+          ? _person.text.trim()
+          : '',
+      settlement: _existing?.settlement ?? false,
+      // Preserve the legacy repayment→expense link when editing a repayment.
       reimbursesTxnId: _existing?.reimbursesTxnId,
       createdAt: _existing?.createdAt ?? DateTime.now(),
     );
@@ -122,13 +158,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
     if (mounted) context.pop();
   }
 
-  String _yourShareLabel(String code) {
-    final total = Money.parse(_amount.text) ?? 0;
-    final owed = Money.parse(_reimbursable.text) ?? 0;
-    final share = (total - owed).clamp(0, total);
-    return 'Your share: ${Money.format(share, code: code)}';
-  }
-
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -139,90 +168,15 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  /// The reimbursement link: on a reimbursable expense, its repayments; on a
-  /// repayment, the original expense it settles. Null when neither applies.
-  Widget? _linkSection(AppData data) {
-    final existing = _existing;
-    if (existing == null) return null;
-    final code = data.currencyCode;
-
-    // This txn is a repayment → link back to the original expense.
-    final reimbursesId = existing.reimbursesTxnId;
-    if (reimbursesId != null) {
-      final orig = data.txnById(reimbursesId);
-      if (orig == null) return null;
-      final title = orig.note.isNotEmpty
-          ? orig.note
-          : (data.categoryById(orig.categoryId)?.name ?? 'Expense');
-      return Card(
-        child: ListTile(
-          leading: const Icon(Icons.link),
-          title: const Text('Repayment for'),
-          subtitle: Text('$title · ${DateFormat.yMMMd().format(orig.date)}'),
-          trailing: Text(Money.format(orig.amountMinor, code: code)),
-          onTap: () => context.push('/txn/${orig.id}'),
-        ),
-      );
-    }
-
-    // This txn is a reimbursable expense → list its repayments.
-    if (existing.type == TxnType.expense && existing.reimbursableMinor > 0) {
-      final repayments =
-          data.txns.where((t) => t.reimbursesTxnId == existing.id).toList()
-            ..sort((a, b) => a.date.compareTo(b.date));
-      final repaid = repayments.fold(0, (s, t) => s + t.amountMinor);
-      final owed = (existing.reimbursableMinor - repaid).clamp(
-        0,
-        existing.amountMinor,
-      );
-      return Card(
-        child: Column(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.handshake_outlined),
-              title: const Text('Owed back to you'),
-              subtitle: Text(
-                '${Money.format(existing.reimbursableMinor, code: code)} '
-                'marked · ${Money.format(repaid, code: code)} repaid',
-              ),
-              trailing: Text(
-                '${Money.format(owed, code: code)} left',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            if (repayments.isEmpty)
-              const ListTile(
-                dense: true,
-                title: Text('No repayments recorded yet.'),
-              )
-            else
-              for (final rp in repayments)
-                ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.south_west, size: 20),
-                  title: const Text('Repayment'),
-                  subtitle: Text(
-                    '${DateFormat.yMMMd().format(rp.date)} · '
-                    '${data.accountById(rp.accountId)?.name ?? ''}',
-                  ),
-                  trailing: Text(
-                    '+${Money.format(rp.amountMinor, code: code)}',
-                  ),
-                  onTap: () => context.push('/txn/${rp.id}'),
-                ),
-          ],
-        ),
-      );
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final data = ref.watch(appDataProvider).valueOrNull;
     final accounts = data?.accounts ?? const <Account>[];
     final categories = data?.categories ?? const <Category>[];
-    final linkSection = data == null ? null : _linkSection(data);
+    final code = data?.currencyCode ?? 'PKR';
+    final linkCard = data == null || _existing == null
+        ? null
+        : txnLinkCard(data, _existing!);
 
     return Scaffold(
       appBar: AppBar(
@@ -241,21 +195,25 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
           : ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                SegmentedButton<TxnType>(
-                  segments: const [
-                    ButtonSegment(
-                      value: TxnType.expense,
-                      label: Text('Expense'),
-                    ),
-                    ButtonSegment(value: TxnType.income, label: Text('Income')),
-                    ButtonSegment(
-                      value: TxnType.transfer,
-                      label: Text('Transfer'),
-                    ),
-                  ],
-                  selected: {_type},
-                  onSelectionChanged: (s) => setState(() => _type = s.first),
-                ),
+                if (!_isSettlement)
+                  SegmentedButton<TxnType>(
+                    segments: const [
+                      ButtonSegment(
+                        value: TxnType.expense,
+                        label: Text('Expense'),
+                      ),
+                      ButtonSegment(
+                        value: TxnType.income,
+                        label: Text('Income'),
+                      ),
+                      ButtonSegment(
+                        value: TxnType.transfer,
+                        label: Text('Transfer'),
+                      ),
+                    ],
+                    selected: {_type},
+                    onSelectionChanged: (s) => setState(() => _type = s.first),
+                  ),
                 const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: _amount,
@@ -264,8 +222,10 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                     decimal: true,
                   ),
                   decoration: InputDecoration(
-                    labelText: 'Amount',
-                    prefixText: '${data?.currencyCode ?? 'PKR'} ',
+                    labelText: _canSplit && _split
+                        ? 'Amount you paid'
+                        : 'Amount',
+                    prefixText: '$code ',
                     errorText: _error,
                   ),
                   onChanged: (_) => setState(() => _error = null),
@@ -286,7 +246,7 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                     onChanged: (v) => setState(() => _toAccountId = v),
                   ),
                 ],
-                if (_type == TxnType.expense) ...[
+                if (_type == TxnType.expense && !_isSettlement) ...[
                   const SizedBox(height: AppSpacing.md),
                   DropdownButtonFormField<String?>(
                     isExpanded: true,
@@ -304,33 +264,26 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Someone owes me back'),
+                    title: const Text('Split with someone'),
                     subtitle: const Text(
-                      'Track the part friends will repay you',
+                      'Only your share counts as your spending',
                     ),
                     value: _split,
                     onChanged: (v) => setState(() => _split = v),
                   ),
-                  if (_split) ...[
-                    TextField(
-                      controller: _reimbursable,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                  if (_split)
+                    SplitFields(
+                      kind: _splitKind,
+                      onKind: (k) => setState(() => _splitKind = k),
+                      person: _person,
+                      share: _share,
+                      knownNames: PeopleLedger.knownNames(
+                        data ?? const AppData(),
                       ),
-                      decoration: InputDecoration(
-                        labelText: 'Amount owed back to you',
-                        prefixText: '${data?.currencyCode ?? 'PKR'} ',
-                      ),
-                      onChanged: (_) => setState(() {}),
+                      paidMinor: Money.parse(_amount.text) ?? 0,
+                      code: code,
+                      onChanged: () => setState(() {}),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        _yourShareLabel(data?.currencyCode ?? 'PKR'),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
                 ],
                 const SizedBox(height: AppSpacing.md),
                 ListTile(
@@ -346,9 +299,9 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                     labelText: 'Note (optional)',
                   ),
                 ),
-                if (linkSection != null) ...[
+                if (linkCard != null) ...[
                   const SizedBox(height: AppSpacing.md),
-                  linkSection,
+                  linkCard,
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 FilledButton(onPressed: _save, child: const Text('Save')),

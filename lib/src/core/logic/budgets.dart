@@ -32,12 +32,13 @@ final class CategorySpend {
 
 /// Pure monthly roll-ups. "Spend" only ever counts [TxnType.expense]; income
 /// and transfers are excluded so moving cash around never looks like spending.
+/// Settlements are excluded from both sides — they only pass money through.
 abstract final class Budgets {
   static bool inMonth(DateTime d, DateTime month) =>
       d.year == month.year && d.month == month.month;
 
-  // "Spend" uses the owner's own share (amount minus any reimbursable part),
-  // so money fronted for friends isn't counted as the owner's spending.
+  // "Spend" uses the owner's own share, so money fronted for friends isn't
+  // counted as the owner's spending and a share someone else fronted is.
   static int spentInMonthMinor(
     AppData data,
     String categoryId,
@@ -46,21 +47,26 @@ abstract final class Budgets {
       .where(
         (t) =>
             t.type == TxnType.expense &&
+            !t.isSettlement &&
             t.categoryId == categoryId &&
             inMonth(t.date, month),
       )
       .fold(0, (sum, t) => sum + t.ownShareMinor);
 
   static int totalSpentInMonthMinor(AppData data, DateTime month) => data.txns
-      .where((t) => t.type == TxnType.expense && inMonth(t.date, month))
+      .where(
+        (t) =>
+            t.type == TxnType.expense &&
+            !t.isSettlement &&
+            inMonth(t.date, month),
+      )
       .fold(0, (sum, t) => sum + t.ownShareMinor);
 
-  // Repayments (income tagged reimbursesTxnId) are not real income.
   static int totalIncomeInMonthMinor(AppData data, DateTime month) => data.txns
       .where(
         (t) =>
             t.type == TxnType.income &&
-            !t.isReimbursement &&
+            !t.isSettlement &&
             inMonth(t.date, month),
       )
       .fold(0, (sum, t) => sum + t.amountMinor);
@@ -93,6 +99,7 @@ abstract final class Budgets {
         .where(
           (t) =>
               t.type == TxnType.expense &&
+              !t.isSettlement &&
               inMonth(t.date, month) &&
               !ids.contains(t.categoryId),
         )

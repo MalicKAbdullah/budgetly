@@ -44,7 +44,7 @@ final class AppData {
 
   /// Bumped when a field is added. The read path never branches on it — every
   /// field is optional in [fromJson] — so any older vault still loads.
-  static const int schemaVersion = 3;
+  static const int schemaVersion = 4;
 
   final String currencyCode;
   final List<Account> accounts;

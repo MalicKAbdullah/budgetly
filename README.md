@@ -28,11 +28,17 @@ Budgetly answers one question well: *where did my money go this month?* It track
 
 **Budget with intent**
 - **Categories with monthly budgets**, progress bars, and over-budget warnings.
-- A **dashboard** showing this month's spend vs income, total balance across accounts, and recent activity.
+- A **dashboard** showing spend vs income for the window you picked, total balance across accounts, and recent activity.
 
-**Settle up with friends**
-- **Split / reimbursable expenses** — mark the part friends will pay back. Only *your share* counts as spending; the rest becomes a receivable.
-- An **"Owed to you"** view; record a repayment and it clears the receivable **without** being counted as income — even when you paid cash and were paid back digitally.
+**Settle up with friends — both directions**
+- **Split an expense with a person**, whichever way it went: *they owe me back* (you fronted the bill) or *I owe them* (someone else paid your share). Either way only **your share** counts as your spending, and the rest becomes a debt with that person's name on it. Names come from a simple free-text field with suggestions from people you have split with before — no contacts access, nothing leaves the app.
+- **People / Settle up** shows each person's net position — "Ali owes you 1,200", "You owe Sara 300" — the transactions behind it, and a **Settle** action. A settlement clears that person's **oldest debt first**.
+- **A settlement is never income and never spending.** Money that only passes through you — a friend paying you back, or you paying them back — moves real cash in and out of your account balance but is left out of Spent, Income, budgets, the category breakdown and the statement. Pay 1,000, mark 500 as owed to you, get the 500 back: Budgetly shows you spent **500** and are **500** poorer, not that you broke even.
+- Lists never show a bare "−1,000" for a bill you only fronted. A split reads *Your share Rs 500 · you paid Rs 1,000 · Rs 500 owed by Ali*, so the full amount can never be mistaken for your own spending.
+
+**One date filter, everywhere, remembered**
+- A single window — **This month / Last 3 months / Last 6 months / This year / All time / Custom range** — shared by the dashboard, the activity list and the statement export. Pick it once on any screen and the others follow.
+- **Custom range** opens a two-date calendar picker. Whatever you choose is remembered across launches, so the app reopens on the window you care about.
 
 **Automate the boring parts**
 - **Recurring transactions** (salary, rent, subscriptions) post automatically, with catch-up on open.
@@ -52,7 +58,7 @@ Budgetly answers one question well: *where did my money go this month?* It track
 
 ## 📸 Screenshots
 
-| Dashboard | Add transaction | Budgets | Owed to you |
+| Dashboard | Add transaction | Budgets | People / Settle up |
 | :---: | :---: | :---: | :---: |
 | _coming soon_ | _coming soon_ | _coming soon_ | _coming soon_ |
 

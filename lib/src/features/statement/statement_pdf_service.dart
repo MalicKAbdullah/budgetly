@@ -1,9 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/flow.dart';
+import 'package:budgetly/src/core/logic/split_text.dart';
+import 'package:budgetly/src/core/models/period_filter.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/money.dart';
-import 'package:budgetly/src/features/dashboard/dashboard_period.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -15,10 +17,10 @@ import 'package:pdf/widgets.dart' as pw;
 abstract final class StatementPdfService {
   static Future<Uint8List> build({
     required AppData data,
-    required DashboardPeriod period,
+    required PeriodFilter filter,
     required DateTime now,
   }) async {
-    final (start, end) = period.range(now);
+    final (start, end) = filter.resolve(now);
     final code = data.currencyCode;
     String money(int m) => Money.format(m, code: code);
     final dfLong = DateFormat.yMMMMd();
@@ -38,15 +40,8 @@ abstract final class StatementPdfService {
             .toList()
           ..sort((a, b) => b.date.compareTo(a.date));
 
-    // -- Category spend (expense own-share) over the range -----------------
-    final byCat = <String, int>{};
-    for (final t in txns) {
-      if (t.type != TxnType.expense) continue;
-      final key = t.categoryId ?? '';
-      byCat[key] = (byCat[key] ?? 0) + t.ownShareMinor;
-    }
-    final cats = byCat.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    // Own-share expense per category, settlements excluded.
+    final cats = DashboardFlow.spendByCategory(data, start, end);
 
     String catName(String? id) => (id == null || id.isEmpty)
         ? 'Uncategorized'
@@ -54,17 +49,35 @@ abstract final class StatementPdfService {
     String acctName(String? id) =>
         id == null ? '' : (data.accountById(id)?.name ?? '');
 
-    (String, String) txnLabel(Txn t) => switch (t.type) {
-      TxnType.expense => (catName(t.categoryId), '-${money(t.amountMinor)}'),
-      TxnType.income => (
-        t.note.isEmpty ? 'Income' : t.note,
-        '+${money(t.amountMinor)}',
-      ),
-      TxnType.transfer => (
-        '${acctName(t.accountId)} → ${acctName(t.toAccountId)}',
-        money(t.amountMinor),
-      ),
-    };
+    // The figure printed per row is what the movement cost or earned the
+    // owner: a split shows their share with the full bill spelled out, and a
+    // settlement is labelled so it never reads as income or spending.
+    (String, String) txnLabel(Txn t) {
+      if (t.isSettlement) {
+        final sign = t.type == TxnType.income ? '+' : '-';
+        return (
+          '${SplitText.settlementTitle(t)} (settlement)',
+          '$sign${money(t.amountMinor)}',
+        );
+      }
+      return switch (t.type) {
+        TxnType.expense => (
+          [
+            catName(t.categoryId),
+            SplitText.describe(t, code),
+          ].whereType<String>().join(' — '),
+          '-${money(t.ownShareMinor)}',
+        ),
+        TxnType.income => (
+          t.note.isEmpty ? 'Income' : t.note,
+          '+${money(t.amountMinor)}',
+        ),
+        TxnType.transfer => (
+          '${acctName(t.accountId)} → ${acctName(t.toAccountId)}',
+          money(t.amountMinor),
+        ),
+      };
+    }
 
     final doc = pw.Document();
     final black = PdfColors.black;
@@ -164,7 +177,7 @@ abstract final class StatementPdfService {
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
                   pw.Text(
-                    period.label,
+                    filter.label(now),
                     style: pw.TextStyle(
                       fontSize: 12,
                       fontWeight: pw.FontWeight.bold,
@@ -172,7 +185,9 @@ abstract final class StatementPdfService {
                   ),
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    '${dfLong.format(start)} – ${dfLong.format(end)}',
+                    filter.isAllTime
+                        ? 'Everything recorded'
+                        : '${dfLong.format(start)} – ${dfLong.format(end)}',
                     style: pw.TextStyle(fontSize: 10, color: grey),
                   ),
                 ],
