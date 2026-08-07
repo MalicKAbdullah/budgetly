@@ -70,8 +70,11 @@ void main() {
       ),
     );
 
-    // Starts on the default window.
+    // Starts on the default window — and exactly one chip says so. The
+    // custom chip used to echo the active preset's label, putting a second
+    // identical "This month" chip right next to the real one.
     expect(find.widgetWithText(ChoiceChip, 'This month'), findsOneWidget);
+    expect(find.widgetWithText(ChoiceChip, 'Custom range'), findsOneWidget);
 
     final chip = find.widgetWithText(ChoiceChip, 'This year');
     await tester.ensureVisible(chip);

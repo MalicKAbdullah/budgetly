@@ -23,8 +23,14 @@ class PeriodFilterBar extends ConsumerWidget {
         children: [
           for (final p in PeriodPreset.values) ...[
             ChoiceChip(
+              // The custom chip shows the chosen dates only while a custom
+              // range is actually active — `filter.label` falls back to the
+              // active preset's name, which otherwise renders a second chip
+              // reading e.g. "This month" right beside the real one.
               label: Text(
-                p == PeriodPreset.custom ? filter.label(now) : p.label,
+                p == PeriodPreset.custom && filter.preset == PeriodPreset.custom
+                    ? filter.label(now)
+                    : p.label,
               ),
               avatar: p == PeriodPreset.custom
                   ? const Icon(Icons.date_range, size: 18)
