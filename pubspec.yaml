@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.9.1+11
+version: 0.9.2+12
 
 environment:
   sdk: ^3.11.1
@@ -49,42 +49,42 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_crypto
-      ref: 2e656ff9d26a8ba458438842096a081a0339b308
+      ref: cf51f7403e5c977ae537371c2d6f5ab87b3c8948
   core_storage:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: 2e656ff9d26a8ba458438842096a081a0339b308
+      ref: cf51f7403e5c977ae537371c2d6f5ab87b3c8948
   core_theme:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_theme
-      ref: 2e656ff9d26a8ba458438842096a081a0339b308
+      ref: cf51f7403e5c977ae537371c2d6f5ab87b3c8948
   core_ui:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
-      ref: 2e656ff9d26a8ba458438842096a081a0339b308
+      ref: cf51f7403e5c977ae537371c2d6f5ab87b3c8948
   core_backup:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_backup
-      ref: 2e656ff9d26a8ba458438842096a081a0339b308
+      ref: cf51f7403e5c977ae537371c2d6f5ab87b3c8948
   core_lock:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_lock
-      ref: 2e656ff9d26a8ba458438842096a081a0339b308
+      ref: cf51f7403e5c977ae537371c2d6f5ab87b3c8948
   core_notify:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_notify
-      ref: 2e656ff9d26a8ba458438842096a081a0339b308
+      ref: cf51f7403e5c977ae537371c2d6f5ab87b3c8948
   core_update:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_update
-      ref: 2e656ff9d26a8ba458438842096a081a0339b308
+      ref: cf51f7403e5c977ae537371c2d6f5ab87b3c8948
 
   cupertino_icons: ^1.0.8
 

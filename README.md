@@ -36,7 +36,7 @@ Budgetly answers one question well: *where did my money go this month?* It track
 
 **Automate the boring parts**
 - **Recurring transactions** (salary, rent, subscriptions) post automatically, with catch-up on open.
-- **Auto-capture from notifications (Android)** — with your opt-in "notification access", Budgetly reads bank/wallet transaction alerts (e.g. Meezan SMS) **on-device**, nudges you, and drops them into a review inbox to confirm in one tap. You can also paste a message manually — the same on-device parser handles both.
+- **Auto-capture from notifications (Android)** — with your opt-in "notification access", Budgetly reads bank/wallet transaction alerts (e.g. Meezan SMS) **on-device**, nudges you, and drops them into a review inbox. The bank, amount, and direction are detected automatically; you confirm the account/category and can add your own **purpose/note** before it's saved. Every captured item can be added or dismissed — even ones the parser couldn't fully make sense of get an "Edit & add" path instead of being stuck with only Dismiss. You can also paste a message manually — the same on-device parser handles both.
 
 **Yours alone**
 - **Fingerprint / device lock** — optionally require your fingerprint or device PIN to open the app (shared `core_lock`).

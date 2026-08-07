@@ -23,6 +23,7 @@ class ImportScreen extends ConsumerStatefulWidget {
 
 class _ImportScreenState extends ConsumerState<ImportScreen> {
   final _text = TextEditingController();
+  final _note = TextEditingController();
   TxnCandidate? _candidate;
   bool _parsed = false;
   String? _accountId;
@@ -41,6 +42,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   @override
   void dispose() {
     _text.dispose();
+    _note.dispose();
     super.dispose();
   }
 
@@ -62,6 +64,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   void _review(String raw) {
     _text.text = raw;
     _currentRaw = raw;
+    // Each captured item gets its own suggested purpose — don't carry over
+    // leftover text from whichever item was reviewed previously.
+    _note.clear();
     _parse();
   }
 
@@ -72,6 +77,12 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         body: _text.text.trim(),
       );
       _parsed = true;
+      // Suggest the detected merchant as the purpose, but never overwrite
+      // something the user already typed (e.g. re-parsing after a tweak).
+      final candidate = _candidate;
+      if (candidate?.merchant != null && _note.text.isEmpty) {
+        _note.text = candidate!.merchant!;
+      }
     });
   }
 
@@ -91,13 +102,14 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       date: c.when ?? DateTime.now(),
       accountId: _accountId!,
       categoryId: isExpense ? _categoryId : null,
-      note: c.merchant ?? '',
+      note: _note.text.trim(),
       createdAt: DateTime.now(),
     );
     await ref.read(appDataProvider.notifier).saveTxn(txn);
     final raw = _currentRaw;
     if (raw != null) await ref.read(captureServiceProvider).remove(raw);
     _text.clear();
+    _note.clear();
     setState(() {
       _candidate = null;
       _parsed = false;
@@ -161,7 +173,16 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
               border: OutlineInputBorder(),
               hintText: 'e.g. PKR 2,400.00 sent to FOODPANDA …',
             ),
-            onChanged: (_) => _currentRaw = null,
+            // Only drop the captured-item association when the box is
+            // cleared entirely — a small edit (e.g. fixing the message so
+            // it parses) must still remove the original from the capture
+            // queue on save, or it lingers there forever as a duplicate.
+            onChanged: (v) {
+              if (v.isEmpty) {
+                _currentRaw = null;
+                _note.clear();
+              }
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
           FilledButton.tonal(onPressed: _parse, child: const Text('Read it')),
@@ -261,11 +282,15 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                   onPressed: () => _dismiss(raw),
                   child: const Text('Dismiss'),
                 ),
-                if (cand != null)
-                  FilledButton(
-                    onPressed: () => _review(raw),
-                    child: const Text('Review'),
-                  ),
+                // Always offer a path to add it — even when the on-device
+                // parser couldn't make sense of the message, "Edit & add"
+                // drops it into the editable box below so the user can fix
+                // it up and re-read it, instead of Dismiss being the only
+                // option.
+                FilledButton(
+                  onPressed: () => _review(raw),
+                  child: Text(cand != null ? 'Review' : 'Edit & add'),
+                ),
               ],
             ),
           ],
@@ -303,6 +328,14 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                   ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextField(
+          controller: _note,
+          decoration: const InputDecoration(
+            labelText: 'Purpose / note (optional)',
+            hintText: 'What was this for?',
           ),
         ),
         const SizedBox(height: AppSpacing.md),
