@@ -4,6 +4,10 @@ import 'package:intl/intl.dart';
 /// of the currency) to avoid floating-point drift. This helper formats and
 /// parses it for display and input.
 abstract final class Money {
+  /// The display prefix for [code], e.g. `Rs ` — used as a field prefix when
+  /// the user types a raw amount.
+  static String symbol(String code) => _symbol(code);
+
   static String _symbol(String code) => switch (code) {
     'PKR' => 'Rs ',
     'USD' => '\$',
@@ -38,6 +42,11 @@ abstract final class Money {
     }
     return major.toStringAsFixed(0);
   }
+
+  /// Plain, unformatted text for an editable amount field (`1250`, `1250.50`)
+  /// — the inverse of [parse], with no grouping or symbol to strip.
+  static String toInput(int minor) =>
+      (minor / 100.0).toStringAsFixed(minor % 100 == 0 ? 0 : 2);
 
   /// Parses user input like `1250` or `1,250.50` into minor units. Returns
   /// null when the text is not a valid non-negative amount.

@@ -41,10 +41,10 @@ class SettingsScreen extends ConsumerWidget {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.sms_outlined),
-                  title: const Text('Auto-capture & import'),
-                  subtitle: const Text('Read bank/wallet alerts, or paste one'),
+                  title: const Text('Captured transactions'),
+                  subtitle: const Text('Review bank/wallet alerts and history'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/import'),
+                  onTap: () => context.push('/capture'),
                 ),
               ],
             ),

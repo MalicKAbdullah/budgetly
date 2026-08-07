@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:budgetly/src/core/models/account.dart';
+import 'package:budgetly/src/core/models/captured_notice.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/models/recurring_template.dart';
 import 'package:budgetly/src/core/models/txn.dart';
@@ -18,6 +19,7 @@ final class AppData {
     this.categories = const <Category>[],
     this.txns = const <Txn>[],
     this.recurringTemplates = const <RecurringTemplate>[],
+    this.capturedNotices = const <CapturedNotice>[],
   });
 
   factory AppData.fromJson(Map<String, dynamic> json) => AppData(
@@ -35,15 +37,26 @@ final class AppData {
         (json['recurringTemplates'] as List<dynamic>? ?? const [])
             .map((e) => RecurringTemplate.fromJson(e as Map<String, dynamic>))
             .toList(),
+    capturedNotices: (json['capturedNotices'] as List<dynamic>? ?? const [])
+        .map((e) => CapturedNotice.fromJson(e as Map<String, dynamic>))
+        .toList(),
   );
 
-  static const int schemaVersion = 2;
+  /// Bumped when a field is added. The read path never branches on it — every
+  /// field is optional in [fromJson] — so any older vault still loads.
+  static const int schemaVersion = 3;
 
   final String currencyCode;
   final List<Account> accounts;
   final List<Category> categories;
   final List<Txn> txns;
   final List<RecurringTemplate> recurringTemplates;
+
+  /// Bank/wallet notifications captured on-device, newest last.
+  final List<CapturedNotice> capturedNotices;
+
+  List<CapturedNotice> get pendingNotices =>
+      capturedNotices.where((n) => n.isPending).toList();
 
   List<Account> get activeAccounts =>
       accounts.where((a) => !a.archived).toList();
@@ -77,12 +90,14 @@ final class AppData {
     List<Category>? categories,
     List<Txn>? txns,
     List<RecurringTemplate>? recurringTemplates,
+    List<CapturedNotice>? capturedNotices,
   }) => AppData(
     currencyCode: currencyCode ?? this.currencyCode,
     accounts: accounts ?? this.accounts,
     categories: categories ?? this.categories,
     txns: txns ?? this.txns,
     recurringTemplates: recurringTemplates ?? this.recurringTemplates,
+    capturedNotices: capturedNotices ?? this.capturedNotices,
   );
 
   Map<String, dynamic> toJson() => {
@@ -92,5 +107,6 @@ final class AppData {
     'categories': categories.map((c) => c.toJson()).toList(),
     'txns': txns.map((t) => t.toJson()).toList(),
     'recurringTemplates': recurringTemplates.map((t) => t.toJson()).toList(),
+    'capturedNotices': capturedNotices.map((n) => n.toJson()).toList(),
   };
 }

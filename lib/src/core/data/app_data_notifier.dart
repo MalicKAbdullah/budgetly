@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/captures.dart';
 import 'package:budgetly/src/core/logic/recurring.dart';
 import 'package:budgetly/src/core/models/account.dart';
+import 'package:budgetly/src/core/models/captured_notice.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/models/recurring_template.dart';
 import 'package:budgetly/src/core/models/txn.dart';
@@ -19,18 +21,30 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
   Future<AppData> build() async {
     ref.onDispose(() => _backupDebounce?.cancel());
     final data = await ref.watch(budgetlyStoreProvider).load();
+    var next = data;
+
     // Materialize any due recurring transactions (with catch-up) on open.
     final result = RecurringMaterializer.run(
       templates: data.recurringTemplates,
       now: ref.read(clockProvider)(),
       newId: _uuid.v4,
     );
-    if (!result.hasChanges) return data;
-    final next = data.copyWith(
-      txns: [...data.txns, ...result.newTxns],
-      recurringTemplates: result.updatedTemplates,
-    );
+    if (result.hasChanges) {
+      next = next.copyWith(
+        txns: [...data.txns, ...result.newTxns],
+        recurringTemplates: result.updatedTemplates,
+      );
+    }
+
+    // Drain whatever the native listener queued while the app was closed.
+    final drained = await _drainNativeQueue();
+    next = _withDrained(next, drained);
+
+    if (identical(next, data)) return data;
     await ref.read(budgetlyStoreProvider).save(next);
+    // Only after the notices are safely persisted — a crash between the two
+    // leaves them in the native queue to be drained again, never lost.
+    await _clearNativeQueue(drained);
     return next;
   }
 
@@ -130,6 +144,64 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
       createdAt: DateTime.now(),
     );
     return _commit(_data.copyWith(txns: [..._data.txns, txn]));
+  }
+
+  // -- Captured notifications ---------------------------------------------
+
+  /// Moves anything the native listener queued into the encrypted history and
+  /// clears the native side. Safe to call repeatedly — already-known raw text
+  /// is skipped.
+  Future<void> ingestNativeQueue() async {
+    final drained = await _drainNativeQueue();
+    final next = _withDrained(_data, drained);
+    if (!identical(next, _data)) await _commit(next);
+    await _clearNativeQueue(drained);
+  }
+
+  /// Records a reviewed notice as a real transaction, in one write.
+  Future<void> addTxnForNotice(Txn txn, String noticeId) => _commit(
+    _data.copyWith(
+      txns: [..._data.txns, txn],
+      capturedNotices: CaptureIngest.withStatus(
+        _data.capturedNotices,
+        noticeId,
+        CaptureStatus.added,
+        txnId: txn.id,
+      ),
+    ),
+  );
+
+  /// Keeps the notice in history, marked as not wanted.
+  Future<void> dismissNotice(String noticeId) => _commit(
+    _data.copyWith(
+      capturedNotices: CaptureIngest.withStatus(
+        _data.capturedNotices,
+        noticeId,
+        CaptureStatus.dismissed,
+      ),
+    ),
+  );
+
+  Future<List<String>> _drainNativeQueue() async {
+    final capture = ref.read(captureServiceProvider);
+    if (!capture.supported || !await capture.isEnabled()) return const [];
+    return capture.getPending();
+  }
+
+  Future<void> _clearNativeQueue(List<String> drained) async {
+    if (drained.isNotEmpty) await ref.read(captureServiceProvider).clear();
+  }
+
+  AppData _withDrained(AppData base, List<String> drained) {
+    if (drained.isEmpty) return base;
+    final notices = CaptureIngest.merge(
+      existing: base.capturedNotices,
+      rawTexts: drained,
+      now: ref.read(clockProvider)(),
+      newId: _uuid.v4,
+    );
+    if (identical(notices, base.capturedNotices)) return base;
+    return base.copyWith(capturedNotices: notices);
   }
 
   // -- Recurring templates ------------------------------------------------

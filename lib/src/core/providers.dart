@@ -17,7 +17,8 @@ import 'package:budgetly/src/core/storage/data_key_store.dart';
 import 'package:budgetly/src/core/storage/budgetly_store.dart';
 import 'package:budgetly/src/core/storage/vault_file.dart';
 import 'package:budgetly/src/features/backup/backup_codec.dart';
-import 'package:budgetly/src/features/import/capture_service.dart';
+import 'package:budgetly/src/core/models/captured_notice.dart';
+import 'package:budgetly/src/features/capture/capture_service.dart';
 import 'package:budgetly/src/features/notifications/budget_notifier.dart';
 
 /// Wall clock as a function. Tests override with a fixed time.
@@ -158,12 +159,11 @@ final budgetNotifierProvider = Provider<BudgetNotifier>(
   ),
 );
 
-/// Captured-but-unreviewed notification texts. Invalidate after any
-/// accept/dismiss and on app resume so the dashboard banner stays current.
-final pendingCapturesProvider = FutureProvider<List<String>>((ref) async {
-  final cap = ref.watch(captureServiceProvider);
-  if (!cap.supported || !await cap.isEnabled()) return const [];
-  return cap.getPending();
+/// Captured notifications still awaiting review. Derived from the encrypted
+/// app data (the source of truth), so it updates itself on every add/dismiss.
+final pendingNoticesProvider = Provider<List<CapturedNotice>>((ref) {
+  final data = ref.watch(appDataProvider).valueOrNull;
+  return data?.pendingNotices ?? const [];
 });
 
 /// Produces the encrypted `.budgetlybackup` bytes for the current dataset.

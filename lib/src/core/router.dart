@@ -4,7 +4,7 @@ import 'package:budgetly/src/core/shell/home_shell.dart';
 import 'package:budgetly/src/features/accounts/accounts_screen.dart';
 import 'package:budgetly/src/features/budgets/budgets_screen.dart';
 import 'package:budgetly/src/features/dashboard/dashboard_screen.dart';
-import 'package:budgetly/src/features/import/import_screen.dart';
+import 'package:budgetly/src/features/capture/capture_screen.dart';
 import 'package:budgetly/src/features/recurring/recurring_editor_screen.dart';
 import 'package:budgetly/src/features/recurring/recurring_screen.dart';
 import 'package:budgetly/src/features/reimbursements/receivables_screen.dart';
@@ -74,7 +74,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             RecurringEditorScreen(templateId: state.pathParameters['id']),
       ),
-      GoRoute(path: '/import', builder: (_, _) => const ImportScreen()),
+      GoRoute(path: '/capture', builder: (_, _) => const CaptureScreen()),
     ],
   );
 });

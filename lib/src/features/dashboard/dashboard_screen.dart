@@ -96,20 +96,18 @@ class _UpdateCard extends ConsumerWidget {
   }
 }
 
-/// "We captured N transactions — review?" banner. Shows only when the native
-/// listener has queued messages the user hasn't accepted or dismissed yet.
+/// "We captured N transactions — review?" banner. Shows only while captured
+/// alerts are still awaiting a decision.
 class _CaptureBanner extends ConsumerWidget {
   const _CaptureBanner();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pending = ref.watch(pendingCapturesProvider).valueOrNull ?? const [];
-    if (pending.isEmpty) return const SizedBox.shrink();
-    final n = pending.length;
+    final n = ref.watch(pendingNoticesProvider).length;
+    if (n == 0) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Card(
-        color: Theme.of(context).colorScheme.secondaryContainer,
         child: ListTile(
           leading: const Icon(Icons.mark_email_unread_outlined),
           title: Text(
@@ -121,9 +119,7 @@ class _CaptureBanner extends ConsumerWidget {
             'From your bank/wallet alerts — accept or discard',
           ),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => context
-              .push('/import')
-              .then((_) => ref.invalidate(pendingCapturesProvider)),
+          onTap: () => context.push('/capture'),
         ),
       ),
     );

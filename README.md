@@ -32,11 +32,11 @@ Budgetly answers one question well: *where did my money go this month?* It track
 
 **Settle up with friends**
 - **Split / reimbursable expenses** — mark the part friends will pay back. Only *your share* counts as spending; the rest becomes a receivable.
-- An **"Owed to you"** view; record a repayment and it clears the receivable **without** being counted as income — even when you paid cash and were paid back digibudgetly.
+- An **"Owed to you"** view; record a repayment and it clears the receivable **without** being counted as income — even when you paid cash and were paid back digitally.
 
 **Automate the boring parts**
 - **Recurring transactions** (salary, rent, subscriptions) post automatically, with catch-up on open.
-- **Auto-capture from notifications (Android)** — with your opt-in "notification access", Budgetly reads bank/wallet transaction alerts (e.g. Meezan SMS) **on-device**, nudges you, and drops them into a review inbox. The bank, amount, and direction are detected automatically; you confirm the account/category and can add your own **purpose/note** before it's saved. Every captured item can be added or dismissed — even ones the parser couldn't fully make sense of get an "Edit & add" path instead of being stuck with only Dismiss. You can also paste a message manually — the same on-device parser handles both.
+- **Auto-capture from notifications (Android)** — with your opt-in "notification access", Budgetly reads bank/wallet transaction alerts (e.g. Meezan SMS) **on-device**, nudges you, and files them under **Captured transactions**. Tapping one opens a **review sheet** right over the list: the bank, amount, date, and direction come pre-filled from the alert, and every one of them stays editable — the **purpose/note** is always yours to write. Alerts the parser can't read still open the same sheet with the raw text and a blank amount, so there is always a way to add one. Nothing disappears: every captured alert stays in **History**, marked Added (with the transaction it became) or Dismissed, and a dismissed one can be added later with **Add anyway**.
 
 **Yours alone**
 - **Fingerprint / device lock** — optionally require your fingerprint or device PIN to open the app (shared `core_lock`).
@@ -47,7 +47,7 @@ Budgetly answers one question well: *where did my money go this month?* It track
 - **Offline-only.** No network code beyond your own optional Drive-folder backup — nothing to leak.
 - **Encrypted at rest.** The whole dataset is encrypted with **AES-256-GCM** under a random key held in the platform keystore.
 - **Your backups, your key.** Backups are encrypted with a separate passphrase via **Argon2id** — restorable on any device.
-- **On-device parsing.** Imported messages are read and parsed locally; the raw text is never stored or uploaded.
+- **On-device parsing.** Captured messages are read and parsed locally and never uploaded. Their text is kept in your capture history — inside the same encrypted store as everything else.
 - **No accounts, no telemetry, no ads.**
 
 ## 📸 Screenshots
