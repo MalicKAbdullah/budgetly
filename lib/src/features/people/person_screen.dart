@@ -8,6 +8,7 @@ import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/core/widgets/txn_tile.dart';
+import 'package:budgetly/src/features/people/person_edit.dart';
 import 'package:budgetly/src/features/people/settle_sheet.dart';
 
 /// One person: the net position, the splits behind it, and Settle up.
@@ -28,9 +29,20 @@ class PersonScreen extends ConsumerWidget {
     }
     final code = data.currencyCode;
     final net = position.netMinor;
+    final person = data.personById(position.personId);
 
     return Scaffold(
-      appBar: AppBar(title: Text(position.name)),
+      appBar: AppBar(
+        title: Text(position.name),
+        actions: [
+          if (person != null)
+            IconButton(
+              onPressed: () => showRenamePersonDialog(context, ref, person),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Rename',
+            ),
+        ],
+      ),
       floatingActionButton: position.isClear
           ? null
           : FloatingActionButton.extended(

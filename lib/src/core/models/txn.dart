@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show immutable;
+import 'package:budgetly/src/core/models/txn_split.dart';
 
 /// What a transaction does to the accounts.
 /// - [expense]  money leaves [Txn.accountId], attributed to a category.
@@ -45,6 +46,8 @@ final class Txn {
     this.counterparty = '',
     this.settlement = false,
     this.reimbursesTxnId,
+    this.splits = const <TxnSplit>[],
+    this.personId,
     required this.createdAt,
   });
 
@@ -62,6 +65,10 @@ final class Txn {
     counterparty: json['counterparty'] as String? ?? '',
     settlement: json['settlement'] as bool? ?? false,
     reimbursesTxnId: json['reimbursesTxnId'] as String?,
+    splits: (json['splits'] as List<dynamic>? ?? const [])
+        .map((e) => TxnSplit.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    personId: json['personId'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 
@@ -98,6 +105,17 @@ final class Txn {
   /// the expense with this id specifically.
   final String? reimbursesTxnId;
 
+  /// Who owes which part of the split total, when the owner has named them.
+  /// Empty for an unnamed split (how versions before the people registry
+  /// recorded one) — it then collects in the single "Unspecified" bucket.
+  ///
+  /// Never authoritative for money: [reimbursableMinor] and [payableMinor] are.
+  final List<TxnSplit> splits;
+
+  /// The one person a **settlement** squares up with. Null on an unnamed
+  /// settlement, and always null on a split (which uses [splits]).
+  final String? personId;
+
   final DateTime createdAt;
 
   /// A settlement is money in transit — never income, never spending.
@@ -107,6 +125,22 @@ final class Txn {
   bool get isReimbursement => isSettlement;
 
   bool get isSplit => reimbursableMinor > 0 || payableMinor > 0;
+
+  /// The split total the slices in [splits] have to add up to. Zero when the
+  /// transaction is not a split.
+  int get splitTotalMinor =>
+      reimbursableMinor > 0 ? reimbursableMinor : payableMinor;
+
+  /// True when the split points outwards — the owner fronted money and the
+  /// named people owe it back. False when the owner is the one who owes.
+  bool get splitsAreReceivable => reimbursableMinor > 0;
+
+  /// **The splits invariant.** Either nobody is named — the whole split total
+  /// sits in the unnamed bucket, exactly as older versions recorded it — or the
+  /// named slices add up to [splitTotalMinor] to the last minor unit. A
+  /// half-assigned split is never written.
+  bool get splitsBalanced =>
+      splits.isEmpty || TxnSplit.sumOf(splits) == splitTotalMinor;
 
   /// What this movement actually cost (expense) or earned (income) the owner.
   /// Zero for settlements and transfers, which move money without changing it.
@@ -132,6 +166,8 @@ final class Txn {
     String? counterparty,
     bool? settlement,
     String? reimbursesTxnId,
+    List<TxnSplit>? splits,
+    String? personId,
   }) => Txn(
     id: id,
     type: type ?? this.type,
@@ -146,6 +182,8 @@ final class Txn {
     counterparty: counterparty ?? this.counterparty,
     settlement: settlement ?? this.settlement,
     reimbursesTxnId: reimbursesTxnId ?? this.reimbursesTxnId,
+    splits: splits ?? this.splits,
+    personId: personId ?? this.personId,
     createdAt: createdAt,
   );
 
@@ -163,6 +201,8 @@ final class Txn {
     if (counterparty.isNotEmpty) 'counterparty': counterparty,
     if (settlement) 'settlement': true,
     if (reimbursesTxnId != null) 'reimbursesTxnId': reimbursesTxnId,
+    if (splits.isNotEmpty) 'splits': [for (final s in splits) s.toJson()],
+    if (personId != null) 'personId': personId,
     'createdAt': createdAt.toIso8601String(),
   };
 }

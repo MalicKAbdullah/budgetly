@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show immutable;
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/captured_notice.dart';
 import 'package:budgetly/src/core/models/category.dart';
+import 'package:budgetly/src/core/models/person.dart';
 import 'package:budgetly/src/core/models/recurring_template.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 
@@ -20,6 +21,7 @@ final class AppData {
     this.txns = const <Txn>[],
     this.recurringTemplates = const <RecurringTemplate>[],
     this.capturedNotices = const <CapturedNotice>[],
+    this.people = const <Person>[],
   });
 
   factory AppData.fromJson(Map<String, dynamic> json) => AppData(
@@ -40,11 +42,14 @@ final class AppData {
     capturedNotices: (json['capturedNotices'] as List<dynamic>? ?? const [])
         .map((e) => CapturedNotice.fromJson(e as Map<String, dynamic>))
         .toList(),
+    people: (json['people'] as List<dynamic>? ?? const [])
+        .map((e) => Person.fromJson(e as Map<String, dynamic>))
+        .toList(),
   );
 
   /// Bumped when a field is added. The read path never branches on it — every
   /// field is optional in [fromJson] — so any older vault still loads.
-  static const int schemaVersion = 4;
+  static const int schemaVersion = 5;
 
   final String currencyCode;
   final List<Account> accounts;
@@ -54,6 +59,9 @@ final class AppData {
 
   /// Bank/wallet notifications captured on-device, newest last.
   final List<CapturedNotice> capturedNotices;
+
+  /// Everybody the owner splits money with, in the order they were added.
+  final List<Person> people;
 
   List<CapturedNotice> get pendingNotices =>
       capturedNotices.where((n) => n.isPending).toList();
@@ -77,6 +85,28 @@ final class AppData {
     return null;
   }
 
+  Person? personById(String? id) {
+    if (id == null) return null;
+    for (final p in people) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
+  /// The registered person with this name, matched case-insensitively.
+  Person? personByName(String name) {
+    final key = name.trim().toLowerCase();
+    if (key.isEmpty) return null;
+    for (final p in people) {
+      if (p.nameKey == key) return p;
+    }
+    return null;
+  }
+
+  /// People sorted for display — alphabetical, case-insensitive.
+  List<Person> get peopleByName =>
+      [...people]..sort((a, b) => a.nameKey.compareTo(b.nameKey));
+
   Txn? txnById(String id) {
     for (final t in txns) {
       if (t.id == id) return t;
@@ -91,6 +121,7 @@ final class AppData {
     List<Txn>? txns,
     List<RecurringTemplate>? recurringTemplates,
     List<CapturedNotice>? capturedNotices,
+    List<Person>? people,
   }) => AppData(
     currencyCode: currencyCode ?? this.currencyCode,
     accounts: accounts ?? this.accounts,
@@ -98,6 +129,7 @@ final class AppData {
     txns: txns ?? this.txns,
     recurringTemplates: recurringTemplates ?? this.recurringTemplates,
     capturedNotices: capturedNotices ?? this.capturedNotices,
+    people: people ?? this.people,
   );
 
   Map<String, dynamic> toJson() => {
@@ -108,5 +140,6 @@ final class AppData {
     'txns': txns.map((t) => t.toJson()).toList(),
     'recurringTemplates': recurringTemplates.map((t) => t.toJson()).toList(),
     'capturedNotices': capturedNotices.map((n) => n.toJson()).toList(),
+    'people': people.map((p) => p.toJson()).toList(),
   };
 }

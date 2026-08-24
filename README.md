@@ -30,7 +30,11 @@ Budgetly answers one question well: *where did my money go this month?* It track
 - **Categories with monthly budgets**, progress bars, and over-budget warnings.
 - A **dashboard** showing spend vs income for the window you picked, total balance across accounts, and recent activity.
 
-**Settle up with friends — both directions**
+**Settle up with people — one bill, several people, both directions**
+- **People registry.** Add, rename and remove the people you share bills with from the People screen. Names are typed — no contacts permission, nothing leaves the device. Renaming updates every transaction that names them. Somebody who still appears on a transaction can't be deleted; Budgetly tells you how many to clear first rather than quietly losing who owes what.
+- **Split one expense with several people.** Enter the split total, then assign it: add people, type each share, or tap **Split evenly**. The running "still to assign" line has to reach zero, so a half-assigned bill is never saved. A split points one way only — either they owe you or you owe them.
+- **Older transactions too.** Anything recorded before this version opens in the same editor, keeps its numbers exactly, and can have people added to it.
+
 - **Split an expense with a person**, whichever way it went: *they owe me back* (you fronted the bill) or *I owe them* (someone else paid your share). Either way only **your share** counts as your spending, and the rest becomes a debt with that person's name on it. Names come from a simple free-text field with suggestions from people you have split with before — no contacts access, nothing leaves the app.
 - **People / Settle up** shows each person's net position — "Ali owes you 1,200", "You owe Sara 300" — the transactions behind it, and a **Settle** action. A settlement clears that person's **oldest debt first**.
 - **A settlement is never income and never spending.** Money that only passes through you — a friend paying you back, or you paying them back — moves real cash in and out of your account balance but is left out of Spent, Income, budgets, the category breakdown and the statement. Pay 1,000, mark 500 as owed to you, get the 500 back: Budgetly shows you spent **500** and are **500** poorer, not that you broke even.
@@ -39,10 +43,12 @@ Budgetly answers one question well: *where did my money go this month?* It track
 **One date filter, everywhere, remembered**
 - A single window — **This month / Last 3 months / Last 6 months / This year / All time / Custom range** — shared by the dashboard, the activity list and the statement export. Pick it once on any screen and the others follow.
 - **Custom range** opens a two-date calendar picker. Whatever you choose is remembered across launches, so the app reopens on the window you care about.
+- **Tap a category, see the transactions.** Tapping a row in the dashboard's Top categories card opens Activity filtered to that category. Activity also has its own category picker, plus search, alongside the type and account filters — they all narrow together inside the selected date window, and a banner names whatever is hiding rows with one tap to clear it. "Uncategorized" is a filter of its own. The category filter is per-session: the date window is remembered across launches, the category deliberately is not.
 
 **Automate the boring parts**
 - **Recurring transactions** (salary, rent, subscriptions) post automatically, with catch-up on open.
 - **Auto-capture from notifications (Android)** — with your opt-in "notification access", Budgetly reads bank/wallet transaction alerts (e.g. Meezan SMS) **on-device**, nudges you, and files them under **Captured transactions**. Tapping one opens a **review sheet** right over the list: the bank, amount, date, and direction come pre-filled from the alert, and every one of them stays editable — the **purpose/note** is always yours to write. Alerts the parser can't read still open the same sheet with the raw text and a blank amount, so there is always a way to add one. Nothing disappears: every captured alert stays in **History**, marked Added (with the transaction it became) or Dismissed, and a dismissed one can be added later with **Add anyway**.
+- **A captured alert can be a transfer, not spending.** Reviewing one offers Expense / Income / **Transfer**. A transfer asks for From and To accounts and skips the category — an ATM withdrawal is `Bank → Cash`, so it never counts as spending and the cash isn't double-counted when you spend it later. Alerts mentioning "withdrawn", "withdrawal" or "ATM" open on Transfer already; you can always switch it back.
 
 **Yours alone**
 - **Fingerprint / device lock** — optionally require your fingerprint or device PIN to open the app (shared `core_lock`).

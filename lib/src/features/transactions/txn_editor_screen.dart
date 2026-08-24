@@ -8,8 +8,10 @@ import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/models/txn.dart';
+import 'package:budgetly/src/core/models/txn_split.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/features/people/person_picker.dart';
 import 'package:budgetly/src/features/transactions/split_fields.dart';
 import 'package:budgetly/src/features/transactions/txn_links.dart';
 import 'package:uuid/uuid.dart';
@@ -27,11 +29,9 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
 
   final _amount = TextEditingController();
   final _note = TextEditingController();
-  final _share = TextEditingController();
-  final _person = TextEditingController();
+  final _split = SplitDraft();
 
-  bool _split = false;
-  DebtKind _splitKind = DebtKind.owedToYou;
+  bool _isSplit = false;
   late TxnType _type;
   String? _accountId;
   String? _toAccountId;
@@ -60,33 +60,32 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
     _categoryId = existing.categoryId;
     _date = existing.date;
     _note.text = existing.note;
-    _person.text = existing.counterparty;
-    _split = existing.isSplit;
-    if (_split) {
-      _splitKind = existing.payableMinor > 0
-          ? DebtKind.youOwe
-          : DebtKind.owedToYou;
-      _share.text = Money.toInput(
-        existing.payableMinor > 0
-            ? existing.payableMinor
-            : existing.reimbursableMinor,
-      );
-    }
+    _isSplit = existing.isSplit;
+    // Loads the people already on it — none for a transaction written before
+    // the registry, which the editor then lets the owner name.
+    if (_isSplit) _split.load(existing);
   }
 
   @override
   void dispose() {
     _amount.dispose();
     _note.dispose();
-    _share.dispose();
-    _person.dispose();
+    _split.dispose();
     super.dispose();
   }
 
   bool get _isSettlement => _existing?.isSettlement ?? false;
   bool get _canSplit => _type == TxnType.expense && !_isSettlement;
+  bool get _splitOn => _canSplit && _isSplit;
+
+  Future<void> _addPerson() async {
+    final person = await showPersonPicker(context, exclude: _split.personIds);
+    if (person == null) return;
+    setState(() => _split.add(person.id));
+  }
 
   Future<void> _save() async {
+    final data = ref.read(appDataProvider).valueOrNull;
     final paid = Money.parse(_amount.text);
     if (paid == null) {
       setState(() => _error = 'Enter a valid amount.');
@@ -104,23 +103,24 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
 
     var reimbursable = 0;
     var payable = 0;
-    if (_canSplit && _split) {
-      final share = Money.parse(_share.text);
-      if (share == null || share <= 0) {
-        setState(() => _error = 'Enter how much the split is for.');
+    var splits = const <TxnSplit>[];
+    var names = '';
+    if (_splitOn) {
+      final problem = _split.validate(paidMinor: paid);
+      if (problem != null) {
+        setState(() => _error = problem);
         return;
       }
-      if (_splitKind == DebtKind.owedToYou) {
-        if (share > paid) {
-          setState(
-            () => _error = 'The part owed back cannot exceed what you paid.',
-          );
-          return;
-        }
-        reimbursable = share;
-      } else {
-        payable = share;
-      }
+      reimbursable = _split.reimbursableMinor;
+      payable = _split.payableMinor;
+      splits = _split.toSplits();
+      // The names are denormalized onto the transaction so rows and search read
+      // them without consulting the registry. With nobody named the existing
+      // text stays as it is, so a split written before the registry never loses
+      // the name it carries.
+      names = splits.isEmpty
+          ? _existing?.counterparty ?? ''
+          : PeopleLedger.counterpartyLabel(data ?? const AppData(), splits);
     }
     // A bill somebody else fronted in full moves no cash of the owner's, so
     // zero is a legitimate amount — but only then.
@@ -140,9 +140,10 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
       note: _note.text.trim(),
       reimbursableMinor: reimbursable,
       payableMinor: payable,
-      counterparty: _isSettlement || (_canSplit && _split)
-          ? _person.text.trim()
-          : '',
+      splits: splits,
+      // A settlement keeps the one person it squares up with.
+      personId: _isSettlement ? _existing?.personId : null,
+      counterparty: _isSettlement ? _existing?.counterparty ?? '' : names,
       settlement: _existing?.settlement ?? false,
       // Preserve the legacy repayment→expense link when editing a repayment.
       reimbursesTxnId: _existing?.reimbursesTxnId,
@@ -222,9 +223,7 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                     decimal: true,
                   ),
                   decoration: InputDecoration(
-                    labelText: _canSplit && _split
-                        ? 'Amount you paid'
-                        : 'Amount',
+                    labelText: _splitOn ? 'Amount you paid' : 'Amount',
                     prefixText: '$code ',
                     errorText: _error,
                   ),
@@ -268,21 +267,19 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                     subtitle: const Text(
                       'Only your share counts as your spending',
                     ),
-                    value: _split,
-                    onChanged: (v) => setState(() => _split = v),
+                    value: _isSplit,
+                    onChanged: (v) => setState(() => _isSplit = v),
                   ),
-                  if (_split)
+                  if (_isSplit)
                     SplitFields(
-                      kind: _splitKind,
-                      onKind: (k) => setState(() => _splitKind = k),
-                      person: _person,
-                      share: _share,
-                      knownNames: PeopleLedger.knownNames(
-                        data ?? const AppData(),
-                      ),
+                      draft: _split,
+                      nameFor: (id) =>
+                          (data ?? const AppData()).personById(id)?.name ??
+                          PeopleLedger.unnamedLabel,
                       paidMinor: Money.parse(_amount.text) ?? 0,
                       code: code,
-                      onChanged: () => setState(() {}),
+                      onAddPerson: _addPerson,
+                      onChanged: () => setState(() => _error = null),
                     ),
                 ],
                 const SizedBox(height: AppSpacing.md),

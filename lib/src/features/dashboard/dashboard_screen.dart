@@ -8,6 +8,7 @@ import 'package:budgetly/src/core/logic/flow.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/core/state/category_filter.dart';
 import 'package:budgetly/src/core/widgets/period_filter_bar.dart';
 import 'package:budgetly/src/core/widgets/txn_tile.dart';
 import 'package:budgetly/src/features/dashboard/widgets/dashboard_banners.dart';
@@ -123,7 +124,18 @@ class _Body extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         AccountFlowCard(flows: flows, code: code),
-        CategoryBreakdown(data: data, start: start, end: end, code: code),
+        CategoryBreakdown(
+          data: data,
+          start: start,
+          end: end,
+          code: code,
+          onSelect: (categoryId) {
+            // One tap answers "what did I spend this on": narrow every screen
+            // to that category, then land on the list that shows it.
+            ref.read(categoryFilterProvider.notifier).select(categoryId);
+            context.go('/transactions');
+          },
+        ),
         NetWorthCard(data: data, code: code),
         if (people.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),

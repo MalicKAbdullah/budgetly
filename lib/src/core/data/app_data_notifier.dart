@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/data/people_migration.dart';
 import 'package:budgetly/src/core/logic/captures.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/logic/recurring.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/captured_notice.dart';
 import 'package:budgetly/src/core/models/category.dart';
+import 'package:budgetly/src/core/models/person.dart';
 import 'package:budgetly/src/core/models/recurring_template.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/providers.dart';
@@ -22,7 +24,10 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
   Future<AppData> build() async {
     ref.onDispose(() => _backupDebounce?.cancel());
     final data = await ref.watch(budgetlyStoreProvider).load();
-    var next = data;
+    // Register the people the typed names refer to. Idempotent: it returns the
+    // same instance once there is nothing left to migrate, so a vault that is
+    // already current is never rewritten.
+    var next = PeopleMigration.run(data, newId: _uuid.v4);
 
     // Materialize any due recurring transactions (with catch-up) on open.
     final result = RecurringMaterializer.run(
@@ -32,7 +37,7 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
     );
     if (result.hasChanges) {
       next = next.copyWith(
-        txns: [...data.txns, ...result.newTxns],
+        txns: [...next.txns, ...result.newTxns],
         recurringTemplates: result.updatedTemplates,
       );
     }
@@ -112,6 +117,58 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
     ),
   );
 
+  // -- People -------------------------------------------------------------
+
+  /// Adds a person, or returns the existing one when that name is already
+  /// registered (case-insensitively) — so the registry never holds two records
+  /// for the same person.
+  Future<Person> addPerson(String name) async {
+    final trimmed = name.trim();
+    final existing = _data.personByName(trimmed);
+    if (existing != null) return existing;
+    final person = Person(id: _uuid.v4(), name: trimmed);
+    await _commit(_data.copyWith(people: [..._data.people, person]));
+    return person;
+  }
+
+  /// Renames a person everywhere at once: the record, plus the denormalized
+  /// `counterparty` text on every transaction that references them, so rows and
+  /// search show the corrected name without any screen consulting the registry.
+  Future<void> renamePerson(String id, String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return Future.value();
+    final people = [
+      for (final p in _data.people) p.id == id ? p.copyWith(name: trimmed) : p,
+    ];
+    final renamed = _data.copyWith(people: people);
+    return _commit(
+      renamed.copyWith(
+        txns: [
+          for (final t in _data.txns)
+            if (t.personId == id)
+              t.copyWith(counterparty: trimmed)
+            else if (t.splits.any((s) => s.personId == id))
+              t.copyWith(
+                counterparty: PeopleLedger.counterpartyLabel(renamed, t.splits),
+              )
+            else
+              t,
+        ],
+      ),
+    );
+  }
+
+  /// Removes a person. Refused while any transaction still references them —
+  /// the People screen offers it only when nothing does, so a split can never
+  /// end up pointing at a person who no longer exists.
+  Future<bool> deletePerson(String id) async {
+    if (PeopleLedger.txnCountFor(_data, id) > 0) return false;
+    await _commit(
+      _data.copyWith(people: _data.people.where((p) => p.id != id).toList()),
+    );
+    return true;
+  }
+
   // -- Transactions -------------------------------------------------------
 
   Future<void> saveTxn(Txn txn) {
@@ -132,6 +189,7 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
   /// [PeopleLedger] for the allocation rule.
   Future<void> settleWithPerson({
     required String person,
+    required String? personId,
     required DebtKind kind,
     required int amountMinor,
     required String accountId,
@@ -146,6 +204,7 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
       date: date,
       accountId: accountId,
       counterparty: person,
+      personId: personId,
       settlement: true,
       note: kind == DebtKind.owedToYou
           ? 'Settlement received'
@@ -275,5 +334,6 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
   // -- Backup restore -----------------------------------------------------
 
   /// Replaces the whole dataset with a decoded backup (Phase 1: replace only).
-  Future<void> importBackup(AppData imported) => _commit(imported);
+  Future<void> importBackup(AppData imported) =>
+      _commit(PeopleMigration.run(imported, newId: _uuid.v4));
 }

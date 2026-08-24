@@ -87,12 +87,17 @@ class Stat extends StatelessWidget {
 }
 
 /// Where the money went: the top spending categories as ranked bars.
+///
+/// Every row is tappable: [onSelect] receives the category id of the row
+/// (`''` for uncategorized), which the dashboard turns into the shared
+/// category filter plus a jump to the activity list.
 class CategoryBreakdown extends StatelessWidget {
   const CategoryBreakdown({
     required this.data,
     required this.start,
     required this.end,
     required this.code,
+    required this.onSelect,
     super.key,
   });
 
@@ -100,6 +105,9 @@ class CategoryBreakdown extends StatelessWidget {
   final DateTime start;
   final DateTime end;
   final String code;
+
+  /// Called with the tapped row's category id (`''` = uncategorized).
+  final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -121,44 +129,56 @@ class CategoryBreakdown extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Top categories',
+                'Top categories · tap one to see its transactions',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
               const SizedBox(height: AppSpacing.sm),
               for (final c in top)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              nameFor(c.key),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                InkWell(
+                  onTap: () => onSelect(c.key),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                      horizontal: 4,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                nameFor(c.key),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          Text(
-                            Money.format(c.value, code: code),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: max == 0 ? 0 : c.value / max,
-                          minHeight: 6,
-                          backgroundColor: scheme.surfaceContainerHighest,
-                          color: scheme.primary,
+                            Text(
+                              Money.format(c.value, code: code),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: max == 0 ? 0 : c.value / max,
+                            minHeight: 6,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
             ],

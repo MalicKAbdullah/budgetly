@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
-import 'package:budgetly/src/core/logic/flow.dart';
-import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/core/state/category_filter.dart';
+import 'package:budgetly/src/core/state/txn_filters.dart';
 import 'package:budgetly/src/core/widgets/period_filter_bar.dart';
 import 'package:budgetly/src/core/widgets/txn_tile.dart';
+import 'package:budgetly/src/features/transactions/txn_filter_bar.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -19,8 +20,40 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
+  final _search = TextEditingController();
   TxnType? _type;
   String? _accountId;
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// The type/account/search pickers live on this screen; the category comes
+  /// from the app-wide filter, so a tap on the dashboard breakdown lands here
+  /// already narrowed.
+  TxnFilters get _filters => TxnFilters(
+    type: _type,
+    accountId: _accountId,
+    categoryId: ref.watch(categoryFilterProvider),
+    search: _search.text,
+  );
+
+  void _clearAll() {
+    ref.read(categoryFilterProvider.notifier).clear();
+    _search.clear();
+    setState(() {
+      _type = null;
+      _accountId = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,20 +82,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
   Widget _list(AppData data) {
     // The window comes from the app-wide filter, so the dashboard and this
-    // list always describe the same slice of time.
+    // list always describe the same slice of time. Everything else narrows on
+    // top of it.
     final (start, end) = ref
         .watch(periodFilterProvider)
         .resolve(DateTime.now());
-    final filtered = data.txns.where((t) {
-      if (!DashboardFlow.inRange(t.date, start, end)) return false;
-      if (_type != null && t.type != _type) return false;
-      if (_accountId != null &&
-          t.accountId != _accountId &&
-          t.toAccountId != _accountId) {
-        return false;
-      }
-      return true;
-    }).toList()..sort((a, b) => b.date.compareTo(a.date));
+    final filters = _filters;
+    final filtered = filters.apply(data, start: start, end: end);
 
     final code = data.currencyCode;
     // Header totals answer "what did this cost me", so they use own share and
@@ -82,46 +108,27 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        _TypeAndAccountFilters(
-          accounts: data.accounts,
-          type: _type,
-          accountId: _accountId,
+        const SizedBox(height: AppSpacing.xs),
+        TxnFilterBar(
+          data: data,
+          filters: filters,
+          searchController: _search,
           onType: (t) => setState(() => _type = t),
           onAccount: (a) => setState(() => _accountId = a),
+          onCategory: (c) =>
+              ref.read(categoryFilterProvider.notifier).select(c),
+          onClearAll: _clearAll,
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.xs,
-            AppSpacing.md,
-            AppSpacing.xs,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${filtered.length} '
-                  '${filtered.length == 1 ? 'transaction' : 'transactions'}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              Text(
-                'Spent ${Money.format(spent, code: code)}'
-                ' · Income ${Money.format(received, code: code)}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
+        _TotalsLine(
+          count: filtered.length,
+          spent: spent,
+          income: received,
+          code: code,
         ),
         const Divider(height: 1),
         Expanded(
           child: filtered.isEmpty
-              ? const Center(child: Text('Nothing matches these filters.'))
+              ? _NoMatches(data: data, filters: filters, onClearAll: _clearAll)
               : ListView.separated(
                   padding: const EdgeInsets.only(bottom: 96),
                   itemCount: filtered.length,
@@ -138,58 +145,108 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 }
 
-class _TypeAndAccountFilters extends StatelessWidget {
-  const _TypeAndAccountFilters({
-    required this.accounts,
-    required this.type,
-    required this.accountId,
-    required this.onType,
-    required this.onAccount,
+class _TotalsLine extends StatelessWidget {
+  const _TotalsLine({
+    required this.count,
+    required this.spent,
+    required this.income,
+    required this.code,
   });
 
-  final List<Account> accounts;
-  final TxnType? type;
-  final String? accountId;
-  final ValueChanged<TxnType?> onType;
-  final ValueChanged<String?> onAccount;
+  final int count;
+  final int spent;
+  final int income;
+  final String code;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.md,
+        AppSpacing.xs,
+      ),
       child: Row(
         children: [
-          for (final (label, t) in [
-            ('All', null),
-            ('Expenses', TxnType.expense),
-            ('Income', TxnType.income),
-            ('Transfers', TxnType.transfer),
-          ]) ...[
-            ChoiceChip(
-              label: Text(label),
-              selected: type == t,
-              onSelected: (_) => onType(t),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-          ],
-          const SizedBox(width: AppSpacing.sm),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<String?>(
-              value: accountId,
-              hint: const Text('All accounts'),
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('All accounts'),
-                ),
-                for (final a in accounts)
-                  DropdownMenuItem<String?>(value: a.id, child: Text(a.name)),
-              ],
-              onChanged: onAccount,
+          Expanded(
+            child: Text(
+              '$count ${count == 1 ? 'transaction' : 'transactions'}',
+              style: style,
             ),
           ),
+          Text(
+            'Spent ${Money.format(spent, code: code)}'
+            ' · Income ${Money.format(income, code: code)}',
+            style: style,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Empty result: says which filters are hiding everything and offers one tap
+/// to drop them, so the owner never sees a bare blank list.
+class _NoMatches extends StatelessWidget {
+  const _NoMatches({
+    required this.data,
+    required this.filters,
+    required this.onClearAll,
+  });
+
+  final AppData data;
+  final TxnFilters filters;
+  final VoidCallback onClearAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final reasons = [
+      if (filters.categoryId != null)
+        'category "${categoryFilterLabel(data, filters.categoryId!)}"',
+      if (filters.type != null) filters.type!.label.toLowerCase(),
+      if (filters.accountId != null)
+        data.accountById(filters.accountId)?.name ?? 'that account',
+      if (filters.search.trim().isNotEmpty) '"${filters.search.trim()}"',
+    ];
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 48,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Nothing to show here',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              reasons.isEmpty
+                  ? 'No transactions fall inside the selected dates.'
+                  : 'Nothing in the selected dates matches '
+                        '${reasons.join(' + ')}.',
+              textAlign: TextAlign.center,
+            ),
+            if (filters.isActive) ...[
+              const SizedBox(height: AppSpacing.md),
+              FilledButton.icon(
+                onPressed: onClearAll,
+                icon: const Icon(Icons.filter_alt_off_outlined),
+                label: const Text('Clear filters'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

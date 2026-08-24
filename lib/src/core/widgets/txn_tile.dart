@@ -29,6 +29,11 @@ class TxnTile extends StatelessWidget {
         ? txn.amountMinor
         : txn.ownShareMinor;
     final splitLine = SplitText.describe(txn, code);
+    // Who is on it, when it is shared with more than one person — the
+    // per-person amounts live on the transaction screen.
+    final peopleLine = txn.splits.length > 1
+        ? 'Split ${txn.splits.length} ways'
+        : null;
 
     final meta = [
       data.accountById(txn.accountId)?.name ?? '',
@@ -52,6 +57,13 @@ class TxnTile extends StatelessWidget {
               splitLine,
               maxLines: 2,
               style: text.bodySmall?.copyWith(color: scheme.onSurface),
+            ),
+          if (peopleLine != null)
+            Text(
+              peopleLine,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
           if (txn.isSettlement)
             Text(

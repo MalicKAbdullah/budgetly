@@ -30,11 +30,14 @@ class _SettlementCard extends StatelessWidget {
     final original = txn.reimbursesTxnId == null
         ? null
         : data.txnById(txn.reimbursesTxnId!);
-    final personKey = PeopleLedger.keyOf(
-      txn.counterparty.trim().isEmpty && original != null
-          ? original.counterparty
-          : txn.counterparty,
-    );
+    final personKey =
+        txn.personId ??
+        PeopleLedger.keyForName(
+          data,
+          txn.counterparty.trim().isEmpty && original != null
+              ? original.counterparty
+              : txn.counterparty,
+        );
 
     return Card(
       child: Column(
@@ -86,6 +89,7 @@ class _SplitCard extends StatelessWidget {
     final code = data.currencyCode;
     final person = SplitText.personLabel(txn.counterparty);
     final receivable = txn.reimbursableMinor > 0;
+    final people = txn.splits;
     final kind = receivable ? DebtKind.owedToYou : DebtKind.youOwe;
     final original = receivable ? txn.reimbursableMinor : txn.payableMinor;
     final open = PeopleLedger.outstandingForMinor(data, txn, kind);
@@ -107,16 +111,31 @@ class _SplitCard extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.people_outline, size: 20),
-            title: Text('Settle up with $person'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(
-              '/people/'
-              '${PeopleLedger.routeKeyFor(PeopleLedger.keyOf(txn.counterparty))}',
-            ),
-          ),
+          if (people.isEmpty)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.people_outline, size: 20),
+              title: Text('Settle up with $person'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(
+                '/people/'
+                '${PeopleLedger.routeKeyFor(PeopleLedger.keyForName(data, txn.counterparty))}',
+              ),
+            )
+          else
+            for (final s in people)
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.people_outline, size: 20),
+                title: Text(
+                  '${data.personById(s.personId)?.name ?? PeopleLedger.unnamedLabel}'
+                  ' · ${Money.format(s.amountMinor, code: code)}',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(
+                  '/people/${PeopleLedger.routeKeyFor(s.personId)}',
+                ),
+              ),
           const SizedBox(height: AppSpacing.xs),
         ],
       ),

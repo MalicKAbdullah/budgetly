@@ -6,6 +6,7 @@ import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/features/people/person_edit.dart';
 
 /// "Who owes who" across everyone the owner has split something with, in one
 /// place. Tapping a person opens their transactions and the Settle action.
@@ -23,10 +24,20 @@ class PeopleScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('People')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showAddPersonDialog(context, ref),
+        icon: const Icon(Icons.person_add_alt),
+        label: const Text('Add person'),
+      ),
       body: open.isEmpty && settled.isEmpty
           ? const _Empty()
           : ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                96,
+              ),
               children: [
                 _TotalsCard(
                   owedToYouMinor: PeopleLedger.totalOwedToYouMinor(data),
@@ -50,6 +61,7 @@ class PeopleScreen extends ConsumerWidget {
                             position: p,
                             code: code,
                             onTap: () => context.push(_route(p)),
+                            onManage: () => _manage(context, ref, data, p),
                           ),
                       ],
                     ),
@@ -57,7 +69,7 @@ class PeopleScreen extends ConsumerWidget {
                 if (settled.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'Settled up',
+                    'No open balance',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -69,6 +81,7 @@ class PeopleScreen extends ConsumerWidget {
                             position: p,
                             code: code,
                             onTap: () => context.push(_route(p)),
+                            onManage: () => _manage(context, ref, data, p),
                           ),
                       ],
                     ),
@@ -82,18 +95,62 @@ class PeopleScreen extends ConsumerWidget {
 
 String _route(PersonPosition p) => '/people/${PeopleLedger.routeKeyFor(p.key)}';
 
+/// Rename / delete, offered only for a registry person — the "Unspecified"
+/// bucket is not a record and has nothing to rename.
+Future<void> _manage(
+  BuildContext context,
+  WidgetRef ref,
+  AppData data,
+  PersonPosition position,
+) async {
+  final person = data.personById(position.personId);
+  if (person == null) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (sheetContext) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Rename'),
+            onTap: () {
+              Navigator.pop(sheetContext);
+              showRenamePersonDialog(context, ref, person);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('Delete'),
+            onTap: () {
+              Navigator.pop(sheetContext);
+              confirmDeletePerson(context, ref, person);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// One person's net position: who owes who, and how much.
 class PersonRow extends StatelessWidget {
   const PersonRow({
     required this.position,
     required this.code,
     this.onTap,
+    this.onManage,
     super.key,
   });
 
   final PersonPosition position;
   final String code;
   final VoidCallback? onTap;
+
+  /// Long-press action: rename or delete. Absent where the row is read-only
+  /// (the dashboard).
+  final VoidCallback? onManage;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +166,7 @@ class PersonRow extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
+      onLongPress: onManage,
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.15),
         child: Text(
@@ -211,9 +269,10 @@ class _Empty extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(AppSpacing.xl),
         child: Text(
-          'Nobody here yet. When you add an expense and split it — either '
-          '"they owe me back" or "someone paid for me" — that person shows up '
-          'here until you settle up.',
+          'Nobody here yet. Add the people you share bills with, then split an '
+          'expense — either "they owe me back" or "someone paid for me" — and '
+          'their balance shows up here until you settle up.\n\n'
+          'Long-press anyone to rename or remove them.',
           textAlign: TextAlign.center,
         ),
       ),

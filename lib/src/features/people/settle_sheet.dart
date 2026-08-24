@@ -39,6 +39,7 @@ Future<void> showSettleSheet(
       .read(appDataProvider.notifier)
       .settleWithPerson(
         person: position.name == PeopleLedger.unnamedLabel ? '' : position.name,
+        personId: position.personId,
         kind: kind,
         amountMinor: result.amountMinor,
         accountId: result.accountId,
