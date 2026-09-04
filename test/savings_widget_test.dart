@@ -182,10 +182,7 @@ void main() {
     expect(find.text('Saved in this month'), findsOneWidget);
     // The movement names the transaction behind it.
     expect(find.text('Savings pot'), findsWidgets);
-    expect(
-      find.textContaining('from this category\'s rule'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('from this category\'s rule'), findsOneWidget);
   });
 
   testWidgets('setting a target shows the +/- against it', (tester) async {
@@ -202,8 +199,10 @@ void main() {
     // Let the auto-backup debounce fire so no timer outlives the test.
     await tester.pump(const Duration(seconds: 6));
 
-    expect(container.read(appDataProvider).requireValue.savingsTargetMinor,
-        800000);
+    expect(
+      container.read(appDataProvider).requireValue.savingsTargetMinor,
+      800000,
+    );
     expect(
       find.descendant(
         of: find.byType(SavingsProgress),
@@ -218,7 +217,9 @@ void main() {
     await pumpApp(tester);
     await openSavings(tester);
 
-    await tester.tap(find.widgetWithText(FloatingActionButton, 'Earmark transactions'));
+    await tester.tap(
+      find.widgetWithText(FloatingActionButton, 'Earmark transactions'),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(SavingsBulkScreen), findsOneWidget);
 

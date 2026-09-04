@@ -64,10 +64,9 @@ class SavingsScreen extends ConsumerWidget {
     await ref.read(appDataProvider.notifier).setSavingsTarget(target);
   }
 
-  Future<void> _bulkEarmark(BuildContext context) =>
-      Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => const SavingsBulkScreen()),
-      );
+  Future<void> _bulkEarmark(BuildContext context) => Navigator.of(
+    context,
+  ).push<void>(MaterialPageRoute(builder: (_) => const SavingsBulkScreen()));
 }
 
 class _Body extends ConsumerWidget {

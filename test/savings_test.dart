@@ -72,12 +72,7 @@ void main() {
     test('reserved is a running balance over every transaction', () {
       expect(Savings.reservedMinor(data), 5000);
       // Never period-scoped: a window that excludes it still reports it.
-      expect(
-        Savings.reservedMinor(
-          data.copyWith(savingsTargetMinor: 0),
-        ),
-        5000,
-      );
+      expect(Savings.reservedMinor(data.copyWith(savingsTargetMinor: 0)), 5000);
     });
 
     test('total money is untouched by the earmark — no cash moved out', () {
@@ -99,9 +94,7 @@ void main() {
     });
 
     test('safe to spend goes negative and says so', () {
-      final poor = data.copyWith(
-        accounts: [_account('cash', opening: 6000)],
-      );
+      final poor = data.copyWith(accounts: [_account('cash', opening: 6000)]);
       // 6000 opening - 5000 paid = 1000 left, 5000 reserved.
       expect(Savings.safeToSpendMinor(poor), -4000);
       expect(Savings.isDipping(poor), isTrue);
@@ -350,10 +343,7 @@ void main() {
       final generated = result.newTxns.single;
       expect(generated.savingsEffectMinor, 20000);
 
-      final data = AppData(
-        accounts: [_account('cash')],
-        txns: result.newTxns,
-      );
+      final data = AppData(accounts: [_account('cash')], txns: result.newTxns);
       expect(Savings.reservedMinor(data), 20000);
       // Salary is not in a savings category, and the rest is still income.
       expect(DashboardFlow.incomeInRange(data, start, end), 80000);
@@ -408,7 +398,11 @@ void main() {
     test('respects the window while reserved stays a running total', () {
       expect(Savings.savedInRangeMinor(data, start, end), 2500);
       expect(
-        Savings.savedInRangeMinor(data, DateTime(2026, 6), DateTime(2026, 6, 30)),
+        Savings.savedInRangeMinor(
+          data,
+          DateTime(2026, 6),
+          DateTime(2026, 6, 30),
+        ),
         1000,
       );
       expect(Savings.reservedMinor(data), 3500);
@@ -443,11 +437,10 @@ void main() {
     );
 
     test('one commit earmarks a whole selection', () {
-      final next = Savings.applied(
-        data,
-        {'a', 'b'},
-        SavingsBulkAction.moveToSavings,
-      );
+      final next = Savings.applied(data, {
+        'a',
+        'b',
+      }, SavingsBulkAction.moveToSavings);
       expect(next.txnById('a')!.savingsEffectMinor, 1000);
       expect(next.txnById('b')!.savingsEffectMinor, 2000);
       // Anything unselected is left exactly as it was.
@@ -456,28 +449,24 @@ void main() {
     });
 
     test('it can take a selection out of savings', () {
-      final next = Savings.applied(
-        data,
-        {'a'},
-        SavingsBulkAction.takeFromSavings,
-      );
+      final next = Savings.applied(data, {
+        'a',
+      }, SavingsBulkAction.takeFromSavings);
       expect(next.txnById('a')!.savingsEffectMinor, -1000);
       expect(Savings.reservedMinor(next), 2000);
     });
 
     test('and reset a selection back to inheriting the category', () {
-      final earmarked = Savings.applied(
-        data,
-        {'a', 'c'},
-        SavingsBulkAction.moveToSavings,
-      );
+      final earmarked = Savings.applied(data, {
+        'a',
+        'c',
+      }, SavingsBulkAction.moveToSavings);
       expect(Savings.reservedMinor(earmarked), 4000);
 
-      final reset = Savings.applied(
-        earmarked,
-        {'a', 'c'},
-        SavingsBulkAction.resetToCategory,
-      );
+      final reset = Savings.applied(earmarked, {
+        'a',
+        'c',
+      }, SavingsBulkAction.resetToCategory);
       expect(reset.txnById('a')!.savingsEffectMinor, isNull);
       expect(reset.txnById('c')!.savingsEffectMinor, isNull);
       // 'c' is back on its category's rule, 'a' has no rule to inherit.

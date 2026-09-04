@@ -76,10 +76,7 @@ abstract final class StatementPdfService {
       }
       return switch (t.type) {
         TxnType.expense => (
-          '${[
-            catName(t.categoryId),
-            SplitText.describe(t, code),
-          ].whereType<String>().join(' — ')}${savingsNote(t)}',
+          '${[catName(t.categoryId), SplitText.describe(t, code)].whereType<String>().join(' — ')}${savingsNote(t)}',
           '-${money(t.ownShareMinor)}',
         ),
         TxnType.income => (

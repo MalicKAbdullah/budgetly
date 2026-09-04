@@ -9,8 +9,7 @@ import 'package:budgetly/src/core/money.dart';
 /// What a transaction is called on a savings list — the category for an
 /// expense, the note for income, the two accounts for a transfer.
 String savingsTxnLabel(Txn txn, AppData data) => switch (txn.type) {
-  TxnType.expense =>
-    data.categoryById(txn.categoryId)?.name ?? 'Uncategorized',
+  TxnType.expense => data.categoryById(txn.categoryId)?.name ?? 'Uncategorized',
   TxnType.income => txn.note.isEmpty ? 'Income' : txn.note,
   TxnType.transfer =>
     '${data.accountById(txn.accountId)?.name ?? '?'} → '

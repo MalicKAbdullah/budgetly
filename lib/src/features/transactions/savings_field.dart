@@ -89,7 +89,8 @@ class SavingsField extends StatelessWidget {
                   ? 'Amount to reserve as savings'
                   : 'Amount to release from savings',
               prefixText: '$code ',
-              helperText: 'Reserving money is not spending it. '
+              helperText:
+                  'Reserving money is not spending it. '
                   'Enter 0 to ignore the category rule.',
               helperMaxLines: 2,
               errorText: errorText,

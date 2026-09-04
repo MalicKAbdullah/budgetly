@@ -125,7 +125,9 @@ abstract final class Savings {
   }) {
     final rows = <SavingsMovement>[];
     for (final t in data.txns) {
-      if (start != null && end != null && !DashboardFlow.inRange(t.date, start, end)) {
+      if (start != null &&
+          end != null &&
+          !DashboardFlow.inRange(t.date, start, end)) {
         continue;
       }
       final effect = effectFor(t, data);

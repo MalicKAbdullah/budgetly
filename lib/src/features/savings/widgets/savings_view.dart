@@ -22,6 +22,7 @@ final class SavingsFigures {
   final int safeToSpendMinor;
   final int targetMinor;
   final int varianceMinor;
+
   /// Every figure comes from [Savings], so the card, the screen and the tests
   /// all read the same resolver.
   factory SavingsFigures.from(AppData data) => SavingsFigures(
@@ -59,11 +60,7 @@ String savingsVarianceLabel(SavingsFigures f, String code) {
 
 /// Progress toward the target with the variance spelled out underneath.
 class SavingsProgress extends StatelessWidget {
-  const SavingsProgress({
-    required this.figures,
-    required this.code,
-    super.key,
-  });
+  const SavingsProgress({required this.figures, required this.code, super.key});
 
   final SavingsFigures figures;
   final String code;
@@ -102,9 +99,7 @@ class SavingsProgress extends StatelessWidget {
               ),
               Text(
                 'Target ${Money.format(figures.targetMinor, code: code)}',
-                style: text.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ],
           ),
