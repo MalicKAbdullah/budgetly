@@ -40,6 +40,14 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.savings_outlined),
+                  title: const Text('Savings'),
+                  subtitle: const Text('What has to stay put, and the target'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/savings'),
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.repeat),
                   title: const Text('Recurring'),
                   subtitle: const Text('Salary, rent, subscriptions'),

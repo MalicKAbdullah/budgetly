@@ -60,6 +60,10 @@ class BudgetsScreen extends ConsumerWidget {
                 for (final c in rows)
                   Card(
                     child: ListTile(
+                      leading: _savingsBadge(
+                        data?.categoryById(c.categoryId)?.savingsEffect ??
+                            SavingsEffect.none,
+                      ),
                       title: Text(c.name),
                       subtitle: c.hasBudget
                           ? Padding(
@@ -108,6 +112,20 @@ class BudgetsScreen extends ConsumerWidget {
   }
 }
 
+/// Marks the categories whose money is a savings movement, so the rule is
+/// visible without opening each one.
+Widget? _savingsBadge(SavingsEffect effect) => switch (effect) {
+  SavingsEffect.none => null,
+  SavingsEffect.addsToSavings => const Tooltip(
+    message: 'Adds to savings',
+    child: Icon(Icons.savings_outlined),
+  ),
+  SavingsEffect.takesFromSavings => const Tooltip(
+    message: 'Takes from savings',
+    child: Icon(Icons.output_outlined),
+  ),
+};
+
 class _CategoryForm extends StatefulWidget {
   const _CategoryForm({this.existing});
   final Category? existing;
@@ -119,11 +137,13 @@ class _CategoryForm extends StatefulWidget {
 class _CategoryFormState extends State<_CategoryForm> {
   late final TextEditingController _name;
   late final TextEditingController _budget;
+  late SavingsEffect _savingsEffect;
 
   @override
   void initState() {
     super.initState();
     final e = widget.existing;
+    _savingsEffect = e?.savingsEffect ?? SavingsEffect.none;
     _name = TextEditingController(text: e?.name ?? '');
     _budget = TextEditingController(
       text: e == null || e.monthlyBudgetMinor == 0
@@ -151,9 +171,14 @@ class _CategoryFormState extends State<_CategoryForm> {
             id: const Uuid().v4(),
             name: name,
             monthlyBudgetMinor: budget,
+            savingsEffect: _savingsEffect,
             createdAt: DateTime.now(),
           )
-        : e.copyWith(name: name, monthlyBudgetMinor: budget);
+        : e.copyWith(
+            name: name,
+            monthlyBudgetMinor: budget,
+            savingsEffect: _savingsEffect,
+          );
     Navigator.pop(context, category);
   }
 
@@ -185,6 +210,26 @@ class _CategoryFormState extends State<_CategoryForm> {
               helperText: 'Leave blank to just track spending',
               border: OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          DropdownButtonFormField<SavingsEffect>(
+            isExpanded: true,
+            initialValue: _savingsEffect,
+            decoration: const InputDecoration(
+              labelText: 'Savings',
+              helperText:
+                  'Applies to every transaction in this category — including '
+                  'the ones you have already recorded. Money moved in or out '
+                  'of savings is not counted as spending or income.',
+              helperMaxLines: 4,
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              for (final e in SavingsEffect.values)
+                DropdownMenuItem(value: e, child: Text(e.label)),
+            ],
+            onChanged: (v) =>
+                setState(() => _savingsEffect = v ?? _savingsEffect),
           ),
           const SizedBox(height: AppSpacing.lg),
           FilledButton(onPressed: _submit, child: const Text('Save category')),

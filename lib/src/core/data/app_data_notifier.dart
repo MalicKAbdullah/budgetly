@@ -6,6 +6,7 @@ import 'package:budgetly/src/core/data/people_migration.dart';
 import 'package:budgetly/src/core/logic/captures.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/logic/recurring.dart';
+import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/captured_notice.dart';
 import 'package:budgetly/src/core/models/category.dart';
@@ -213,6 +214,20 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
     );
     return _commit(_data.copyWith(txns: [..._data.txns, txn]));
   }
+
+  // -- Savings ------------------------------------------------------------
+
+  /// Sets the amount that should be held back as savings. 0 clears the target.
+  Future<void> setSavingsTarget(int minor) =>
+      _commit(_data.copyWith(savingsTargetMinor: minor));
+
+  /// Earmarks (or un-earmarks) a whole selection of transactions in **one**
+  /// write, so a bulk pass over old records is a single commit and a single
+  /// undo-by-reselect.
+  Future<void> applySavingsAction(
+    Set<String> txnIds,
+    SavingsBulkAction action,
+  ) => _commit(Savings.applied(_data, txnIds, action));
 
   // -- Captured notifications ---------------------------------------------
 

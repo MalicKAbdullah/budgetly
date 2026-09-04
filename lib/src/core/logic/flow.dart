@@ -1,4 +1,5 @@
 import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:intl/intl.dart';
 
@@ -29,7 +30,9 @@ class SpendBucket {
 /// Pure range roll-ups over [AppData].
 ///
 /// "Spent" and "income" are what the owner really earned or lost: they use the
-/// owner's own share and skip settlements, which only pass money through.
+/// owner's own share, skip settlements, which only pass money through, and
+/// leave out whatever part of a movement was merely earmarked as savings
+/// ([Savings.spendableShareMinor]).
 /// [byAccount] is deliberately different — it tracks real cash movement, so a
 /// settlement still shows as money in or out of the account it touched.
 abstract final class DashboardFlow {
@@ -48,7 +51,7 @@ abstract final class DashboardFlow {
             !t.isSettlement &&
             inRange(t.date, start, end),
       )
-      .fold(0, (s, t) => s + t.ownShareMinor);
+      .fold(0, (s, t) => s + Savings.spendableShareMinor(t, data));
 
   static int incomeInRange(AppData data, DateTime start, DateTime end) => data
       .txns
@@ -58,7 +61,7 @@ abstract final class DashboardFlow {
             !t.isSettlement &&
             inRange(t.date, start, end),
       )
-      .fold(0, (s, t) => s + t.amountMinor);
+      .fold(0, (s, t) => s + Savings.spendableShareMinor(t, data));
 
   /// Own-share expense per category id (`''` = uncategorized), biggest first.
   static List<MapEntry<String, int>> spendByCategory(
@@ -71,7 +74,7 @@ abstract final class DashboardFlow {
       if (t.type != TxnType.expense || t.isSettlement) continue;
       if (!inRange(t.date, start, end)) continue;
       final key = t.categoryId ?? '';
-      byCat[key] = (byCat[key] ?? 0) + t.ownShareMinor;
+      byCat[key] = (byCat[key] ?? 0) + Savings.spendableShareMinor(t, data);
     }
     return byCat.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
   }
@@ -176,7 +179,7 @@ abstract final class DashboardFlow {
                 !t.isSettlement &&
                 _day(t.date) == day,
           )
-          .fold(0, (s, t) => s + t.ownShareMinor);
+          .fold(0, (s, t) => s + Savings.spendableShareMinor(t, data));
       buckets.add(
         SpendBucket(
           label: multiMonth ? DateFormat.Md().format(day) : '${day.day}',
@@ -203,7 +206,7 @@ abstract final class DashboardFlow {
                 t.date.year == m.year &&
                 t.date.month == m.month,
           )
-          .fold(0, (s, t) => s + t.ownShareMinor);
+          .fold(0, (s, t) => s + Savings.spendableShareMinor(t, data));
       buckets.add(SpendBucket(label: DateFormat.MMM().format(m), minor: total));
     }
     return buckets;
@@ -223,7 +226,7 @@ abstract final class DashboardFlow {
                 !t.isSettlement &&
                 t.date.year == y,
           )
-          .fold(0, (s, t) => s + t.ownShareMinor);
+          .fold(0, (s, t) => s + Savings.spendableShareMinor(t, data));
       buckets.add(SpendBucket(label: '$y', minor: total));
     }
     return buckets;

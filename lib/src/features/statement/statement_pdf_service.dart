@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/flow.dart';
+import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/logic/split_text.dart';
 import 'package:budgetly/src/core/models/period_filter.dart';
 import 'package:budgetly/src/core/models/txn.dart';
@@ -26,6 +27,8 @@ abstract final class StatementPdfService {
     final dfLong = DateFormat.yMMMMd();
     final dfShort = DateFormat.MMMd();
 
+    final reserved = Savings.reservedMinor(data);
+    final savedInWindow = Savings.savedInRangeMinor(data, start, end);
     final income = DashboardFlow.incomeInRange(data, start, end);
     final spent = DashboardFlow.spentInRange(data, start, end);
     final flows = DashboardFlow.byAccount(
@@ -52,6 +55,17 @@ abstract final class StatementPdfService {
     // The figure printed per row is what the movement cost or earned the
     // owner: a split shows their share with the full bill spelled out, and a
     // settlement is labelled so it never reads as income or spending.
+    // What a row says about savings. The money column stays the cash that
+    // really moved, exactly as a settlement row does; the note is what keeps
+    // the reserved part from reading as spending.
+    String savingsNote(Txn t) {
+      final effect = Savings.effectFor(t, data);
+      if (effect == 0) return '';
+      return effect > 0
+          ? ' [${money(effect)} to savings]'
+          : ' [${money(-effect)} from savings]';
+    }
+
     (String, String) txnLabel(Txn t) {
       if (t.isSettlement) {
         final sign = t.type == TxnType.income ? '+' : '-';
@@ -62,14 +76,14 @@ abstract final class StatementPdfService {
       }
       return switch (t.type) {
         TxnType.expense => (
-          [
+          '${[
             catName(t.categoryId),
             SplitText.describe(t, code),
-          ].whereType<String>().join(' — '),
+          ].whereType<String>().join(' — ')}${savingsNote(t)}',
           '-${money(t.ownShareMinor)}',
         ),
         TxnType.income => (
-          t.note.isEmpty ? 'Income' : t.note,
+          '${t.note.isEmpty ? 'Income' : t.note}${savingsNote(t)}',
           '+${money(t.amountMinor)}',
         ),
         TxnType.transfer => (
@@ -206,6 +220,20 @@ abstract final class StatementPdfService {
               bigStat('Net', money(income - spent)),
             ],
           ),
+          // Savings — a pot reserved across every account, left out of the
+          // money in / money out figures above.
+          sectionTitle('Savings'),
+          pw.Divider(color: rule, thickness: 0.5),
+          row('Reserved as savings', money(reserved)),
+          if (data.savingsTargetMinor != 0)
+            row(
+              'Target',
+              '${money(data.savingsTargetMinor)}  '
+                  '(${Savings.varianceMinor(data) >= 0 ? '+' : '-'}'
+                  '${money(Savings.varianceMinor(data).abs())})',
+            ),
+          row('Safe to spend', money(Savings.safeToSpendMinor(data))),
+          row('Saved in this period', money(savedInWindow)),
           // Per-account flow
           if (flows.isNotEmpty) ...[
             sectionTitle('By account'),

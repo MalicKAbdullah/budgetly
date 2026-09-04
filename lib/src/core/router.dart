@@ -10,6 +10,7 @@ import 'package:budgetly/src/features/recurring/recurring_screen.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/features/people/people_screen.dart';
 import 'package:budgetly/src/features/people/person_screen.dart';
+import 'package:budgetly/src/features/savings/savings_screen.dart';
 import 'package:budgetly/src/features/settings/settings_screen.dart';
 import 'package:budgetly/src/features/transactions/transactions_screen.dart';
 import 'package:budgetly/src/features/transactions/txn_editor_screen.dart';
@@ -69,6 +70,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           personKey: PeopleLedger.keyFromRoute(state.pathParameters['key']!),
         ),
       ),
+      GoRoute(path: '/savings', builder: (_, _) => const SavingsScreen()),
       GoRoute(path: '/recurring', builder: (_, _) => const RecurringScreen()),
       GoRoute(
         path: '/recurring/new',

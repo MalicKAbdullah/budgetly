@@ -62,6 +62,10 @@ abstract final class RecurringMaterializer {
             toAccountId: t.toAccountId,
             categoryId: t.categoryId,
             note: t.note,
+            // The template's earmark becomes each occurrence's own override,
+            // so a salary reserves its set amount without salary having to
+            // live in a savings category.
+            savingsEffectMinor: t.savingsEffectMinor,
             createdAt: now,
           ),
         );

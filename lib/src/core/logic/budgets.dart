@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 
 /// A category's spend against its monthly budget, for one month.
@@ -33,6 +34,8 @@ final class CategorySpend {
 /// Pure monthly roll-ups. "Spend" only ever counts [TxnType.expense]; income
 /// and transfers are excluded so moving cash around never looks like spending.
 /// Settlements are excluded from both sides — they only pass money through.
+/// So is the earmarked part of a movement: reserving money as savings is not
+/// spending it.
 abstract final class Budgets {
   static bool inMonth(DateTime d, DateTime month) =>
       d.year == month.year && d.month == month.month;
@@ -51,7 +54,7 @@ abstract final class Budgets {
             t.categoryId == categoryId &&
             inMonth(t.date, month),
       )
-      .fold(0, (sum, t) => sum + t.ownShareMinor);
+      .fold(0, (sum, t) => sum + Savings.spendableShareMinor(t, data));
 
   static int totalSpentInMonthMinor(AppData data, DateTime month) => data.txns
       .where(
@@ -60,7 +63,7 @@ abstract final class Budgets {
             !t.isSettlement &&
             inMonth(t.date, month),
       )
-      .fold(0, (sum, t) => sum + t.ownShareMinor);
+      .fold(0, (sum, t) => sum + Savings.spendableShareMinor(t, data));
 
   static int totalIncomeInMonthMinor(AppData data, DateTime month) => data.txns
       .where(
@@ -69,7 +72,7 @@ abstract final class Budgets {
             !t.isSettlement &&
             inMonth(t.date, month),
       )
-      .fold(0, (sum, t) => sum + t.amountMinor);
+      .fold(0, (sum, t) => sum + Savings.spendableShareMinor(t, data));
 
   static int totalMonthlyBudgetMinor(AppData data) =>
       data.categories.fold(0, (sum, c) => sum + c.monthlyBudgetMinor);
@@ -103,6 +106,6 @@ abstract final class Budgets {
               inMonth(t.date, month) &&
               !ids.contains(t.categoryId),
         )
-        .fold(0, (sum, t) => sum + t.ownShareMinor);
+        .fold(0, (sum, t) => sum + Savings.spendableShareMinor(t, data));
   }
 }

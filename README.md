@@ -30,12 +30,22 @@ Budgetly answers one question well: *where did my money go this month?* It track
 - **Categories with monthly budgets**, progress bars, and over-budget warnings.
 - A **dashboard** showing spend vs income for the window you picked, total balance across accounts, and recent activity.
 
+**Savings — a pot spread across every account**
+- **Savings is an earmark, not an account.** Your money keeps moving between cash, bank and wallet, so Budgetly reserves an *amount* rather than a place. The dashboard card answers the one question that matters: **how much has to stay put**, and **how much is actually safe to spend** — total balance minus everything reserved.
+- **Earmarking is neither spending nor income.** Reserving money doesn't move it, so an earmark never changes an account balance and is left out of Spent, Income, budgets, the category breakdown, the spending chart and the statement — the same treatment a settlement gets. Reserve Rs 20,000 of a Rs 100,000 salary and Budgetly shows Rs 80,000 of income and Rs 20,000 reserved, not Rs 100,000 you might spend twice.
+- **A target with a plus or minus.** Set the amount you want held back and every screen shows how far ahead or short you are.
+- **A warning when you dip in.** If you have less money than you have reserved, Budgetly says so, by how much — the whole point of tracking it.
+- **Categories can be savings by nature.** Give a category a rule — *adds to savings* or *takes from savings* — and every transaction in it counts, **including the hundreds you already recorded**. The rule is read live, so you never make a pass over old records.
+- **Per-transaction override, three ways.** Any transaction can inherit its category's rule, move a specific amount in, or take a specific amount out. Inheriting always shows you what it currently resolves to, so nothing is a mystery. An explicit `0` opts one transaction out of its category's rule.
+- **Recurring amounts.** A recurring salary can set a fixed amount aside every month even though salary isn't a savings category — every occurrence it posts carries the earmark.
+- **Earmark what you already recorded.** From the Savings screen, a full-page multi-select list of the transactions in your chosen window: tick as many as you like and **Move to savings**, **Take from savings**, or **Reset to category default** — applied to the whole selection in one go.
+- **Transfers never move savings.** Bank → Cash changes where your money sits, not how much of it is saved, so a transfer carries no savings effect whatever its category says.
+
 **Settle up with people — one bill, several people, both directions**
 - **People registry.** Add, rename and remove the people you share bills with from the People screen. Names are typed — no contacts permission, nothing leaves the device. Renaming updates every transaction that names them. Somebody who still appears on a transaction can't be deleted; Budgetly tells you how many to clear first rather than quietly losing who owes what.
 - **Split one expense with several people.** Enter the split total, then assign it: add people, type each share, or tap **Split evenly**. The running "still to assign" line has to reach zero, so a half-assigned bill is never saved. A split points one way only — either they owe you or you owe them.
+- **Either direction.** *They owe me back* (you fronted the bill) or *I owe them* (someone else paid your share). Either way only **your share** counts as your spending, and the rest becomes a debt with that person's name on it.
 - **Older transactions too.** Anything recorded before this version opens in the same editor, keeps its numbers exactly, and can have people added to it.
-
-- **Split an expense with a person**, whichever way it went: *they owe me back* (you fronted the bill) or *I owe them* (someone else paid your share). Either way only **your share** counts as your spending, and the rest becomes a debt with that person's name on it. Names come from a simple free-text field with suggestions from people you have split with before — no contacts access, nothing leaves the app.
 - **People / Settle up** shows each person's net position — "Ali owes you 1,200", "You owe Sara 300" — the transactions behind it, and a **Settle** action. A settlement clears that person's **oldest debt first**.
 - **A settlement is never income and never spending.** Money that only passes through you — a friend paying you back, or you paying them back — moves real cash in and out of your account balance but is left out of Spent, Income, budgets, the category breakdown and the statement. Pay 1,000, mark 500 as owed to you, get the 500 back: Budgetly shows you spent **500** and are **500** poorer, not that you broke even.
 - Lists never show a bare "−1,000" for a bill you only fronted. A split reads *Your share Rs 500 · you paid Rs 1,000 · Rs 500 owed by Ali*, so the full amount can never be mistaken for your own spending.

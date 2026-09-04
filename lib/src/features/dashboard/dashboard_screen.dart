@@ -13,6 +13,7 @@ import 'package:budgetly/src/core/widgets/period_filter_bar.dart';
 import 'package:budgetly/src/core/widgets/txn_tile.dart';
 import 'package:budgetly/src/features/dashboard/widgets/dashboard_banners.dart';
 import 'package:budgetly/src/features/dashboard/widgets/dashboard_cards.dart';
+import 'package:budgetly/src/features/dashboard/widgets/savings_card.dart';
 import 'package:budgetly/src/features/dashboard/widgets/spend_chart.dart';
 import 'package:budgetly/src/features/statement/statement_pdf_service.dart';
 import 'package:printing/printing.dart';
@@ -117,6 +118,7 @@ class _Body extends ConsumerWidget {
         const SizedBox(height: AppSpacing.sm),
         SummaryCard(spentMinor: spent, incomeMinor: income, code: code),
         const SizedBox(height: AppSpacing.md),
+        SavingsCard(data: data, code: code),
         SpendChart(
           buckets: buckets,
           title: '${filter.label(now)} · spending',

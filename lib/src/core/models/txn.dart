@@ -30,6 +30,9 @@ enum TxnType {
 ///   someone else fronted.
 /// - A **settlement** ([isSettlement]) only passes money through the owner to
 ///   clear a debt. It moves cash but is never income and never spending.
+/// - An **earmark** ([savingsEffectMinor], or the rule on the category) only
+///   reserves money that is already there. It moves no cash and is never
+///   income and never spending.
 @immutable
 final class Txn {
   const Txn({
@@ -48,6 +51,7 @@ final class Txn {
     this.reimbursesTxnId,
     this.splits = const <TxnSplit>[],
     this.personId,
+    this.savingsEffectMinor,
     required this.createdAt,
   });
 
@@ -69,6 +73,7 @@ final class Txn {
         .map((e) => TxnSplit.fromJson(e as Map<String, dynamic>))
         .toList(),
     personId: json['personId'] as String?,
+    savingsEffectMinor: (json['savingsEffectMinor'] as num?)?.toInt(),
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 
@@ -115,6 +120,18 @@ final class Txn {
   /// The one person a **settlement** squares up with. Null on an unnamed
   /// settlement, and always null on a split (which uses [splits]).
   final String? personId;
+
+  /// This transaction's own savings earmark, overriding whatever rule its
+  /// category carries.
+  ///
+  /// - `null` — inherit the category's [SavingsEffect].
+  /// - a signed amount — reserve (positive) or release (negative) exactly
+  ///   this much, including an explicit `0` meaning "whatever my category
+  ///   says, this one is not a savings movement".
+  ///
+  /// Never read directly: [Savings.effectFor] is the only resolver, because a
+  /// transfer carries no effect whatever this field or the category says.
+  final int? savingsEffectMinor;
 
   final DateTime createdAt;
 
@@ -168,6 +185,7 @@ final class Txn {
     String? reimbursesTxnId,
     List<TxnSplit>? splits,
     String? personId,
+    Object? savingsEffectMinor = _keep,
   }) => Txn(
     id: id,
     type: type ?? this.type,
@@ -184,8 +202,15 @@ final class Txn {
     reimbursesTxnId: reimbursesTxnId ?? this.reimbursesTxnId,
     splits: splits ?? this.splits,
     personId: personId ?? this.personId,
+    savingsEffectMinor: savingsEffectMinor == _keep
+        ? this.savingsEffectMinor
+        : savingsEffectMinor as int?,
     createdAt: createdAt,
   );
+
+  /// Sentinel that lets [copyWith] tell "leave [savingsEffectMinor] alone"
+  /// apart from "set it back to inheriting the category rule" (`null`).
+  static const Object _keep = Object();
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -203,6 +228,7 @@ final class Txn {
     if (reimbursesTxnId != null) 'reimbursesTxnId': reimbursesTxnId,
     if (splits.isNotEmpty) 'splits': [for (final s in splits) s.toJson()],
     if (personId != null) 'personId': personId,
+    if (savingsEffectMinor != null) 'savingsEffectMinor': savingsEffectMinor,
     'createdAt': createdAt.toIso8601String(),
   };
 }

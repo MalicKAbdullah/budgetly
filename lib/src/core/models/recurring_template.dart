@@ -18,6 +18,10 @@ enum RecurringInterval {
 
 /// A repeating transaction (salary, rent, a subscription). On each app open,
 /// due occurrences are materialized into real transactions.
+///
+/// [savingsEffectMinor] rides onto every generated transaction as that
+/// transaction's own earmark, so a salary can reserve a set amount even though
+/// salary is not in a savings category.
 @immutable
 final class RecurringTemplate {
   const RecurringTemplate({
@@ -31,6 +35,7 @@ final class RecurringTemplate {
     required this.interval,
     required this.nextRunDate,
     this.active = true,
+    this.savingsEffectMinor,
     required this.createdAt,
   });
 
@@ -46,6 +51,7 @@ final class RecurringTemplate {
         interval: RecurringInterval.parse(json['interval'] as String?),
         nextRunDate: DateTime.parse(json['nextRunDate'] as String),
         active: json['active'] as bool? ?? true,
+        savingsEffectMinor: (json['savingsEffectMinor'] as num?)?.toInt(),
         createdAt: DateTime.parse(json['createdAt'] as String),
       );
 
@@ -59,6 +65,11 @@ final class RecurringTemplate {
   final RecurringInterval interval;
   final DateTime nextRunDate;
   final bool active;
+
+  /// Earmarked on each generated transaction. `null` lets each generated
+  /// transaction inherit its category's rule.
+  final int? savingsEffectMinor;
+
   final DateTime createdAt;
 
   RecurringTemplate copyWith({
@@ -71,6 +82,7 @@ final class RecurringTemplate {
     RecurringInterval? interval,
     DateTime? nextRunDate,
     bool? active,
+    Object? savingsEffectMinor = _keep,
   }) => RecurringTemplate(
     id: id,
     type: type ?? this.type,
@@ -82,8 +94,14 @@ final class RecurringTemplate {
     interval: interval ?? this.interval,
     nextRunDate: nextRunDate ?? this.nextRunDate,
     active: active ?? this.active,
+    savingsEffectMinor: savingsEffectMinor == _keep
+        ? this.savingsEffectMinor
+        : savingsEffectMinor as int?,
     createdAt: createdAt,
   );
+
+  /// Sentinel separating "leave the earmark alone" from "clear it".
+  static const Object _keep = Object();
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -96,6 +114,7 @@ final class RecurringTemplate {
     'interval': interval.name,
     'nextRunDate': nextRunDate.toIso8601String(),
     'active': active,
+    if (savingsEffectMinor != null) 'savingsEffectMinor': savingsEffectMinor,
     'createdAt': createdAt.toIso8601String(),
   };
 }

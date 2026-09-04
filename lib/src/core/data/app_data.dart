@@ -22,6 +22,7 @@ final class AppData {
     this.recurringTemplates = const <RecurringTemplate>[],
     this.capturedNotices = const <CapturedNotice>[],
     this.people = const <Person>[],
+    this.savingsTargetMinor = 0,
   });
 
   factory AppData.fromJson(Map<String, dynamic> json) => AppData(
@@ -45,11 +46,12 @@ final class AppData {
     people: (json['people'] as List<dynamic>? ?? const [])
         .map((e) => Person.fromJson(e as Map<String, dynamic>))
         .toList(),
+    savingsTargetMinor: (json['savingsTargetMinor'] as num?)?.toInt() ?? 0,
   );
 
   /// Bumped when a field is added. The read path never branches on it — every
   /// field is optional in [fromJson] — so any older vault still loads.
-  static const int schemaVersion = 5;
+  static const int schemaVersion = 6;
 
   final String currencyCode;
   final List<Account> accounts;
@@ -62,6 +64,9 @@ final class AppData {
 
   /// Everybody the owner splits money with, in the order they were added.
   final List<Person> people;
+
+  /// How much the owner wants held back as savings. 0 = no target set.
+  final int savingsTargetMinor;
 
   List<CapturedNotice> get pendingNotices =>
       capturedNotices.where((n) => n.isPending).toList();
@@ -122,6 +127,7 @@ final class AppData {
     List<RecurringTemplate>? recurringTemplates,
     List<CapturedNotice>? capturedNotices,
     List<Person>? people,
+    int? savingsTargetMinor,
   }) => AppData(
     currencyCode: currencyCode ?? this.currencyCode,
     accounts: accounts ?? this.accounts,
@@ -130,6 +136,7 @@ final class AppData {
     recurringTemplates: recurringTemplates ?? this.recurringTemplates,
     capturedNotices: capturedNotices ?? this.capturedNotices,
     people: people ?? this.people,
+    savingsTargetMinor: savingsTargetMinor ?? this.savingsTargetMinor,
   );
 
   Map<String, dynamic> toJson() => {
@@ -141,5 +148,6 @@ final class AppData {
     'recurringTemplates': recurringTemplates.map((t) => t.toJson()).toList(),
     'capturedNotices': capturedNotices.map((n) => n.toJson()).toList(),
     'people': people.map((p) => p.toJson()).toList(),
+    if (savingsTargetMinor != 0) 'savingsTargetMinor': savingsTargetMinor,
   };
 }

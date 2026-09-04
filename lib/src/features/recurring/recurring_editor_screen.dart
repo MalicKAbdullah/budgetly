@@ -9,6 +9,8 @@ import 'package:budgetly/src/core/models/recurring_template.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/core/widgets/txn_type_selector.dart';
+import 'package:budgetly/src/features/transactions/savings_field.dart';
 import 'package:uuid/uuid.dart';
 
 class RecurringEditorScreen extends ConsumerStatefulWidget {
@@ -22,6 +24,7 @@ class RecurringEditorScreen extends ConsumerStatefulWidget {
 class _State extends ConsumerState<RecurringEditorScreen> {
   final _amount = TextEditingController();
   final _note = TextEditingController();
+  final _savings = SavingsDraft();
   late TxnType _type;
   late RecurringInterval _interval;
   String? _accountId;
@@ -53,6 +56,9 @@ class _State extends ConsumerState<RecurringEditorScreen> {
       _categoryId = e.categoryId;
       _start = e.nextRunDate;
       _note.text = e.note;
+      _savings.choice = SavingsChoice.forEarmark(e.savingsEffectMinor);
+      final earmark = e.savingsEffectMinor;
+      if (earmark != null) _savings.amount.text = Money.toInput(earmark.abs());
     } else {
       _type = TxnType.expense;
       _interval = RecurringInterval.monthly;
@@ -65,6 +71,7 @@ class _State extends ConsumerState<RecurringEditorScreen> {
   void dispose() {
     _amount.dispose();
     _note.dispose();
+    _savings.dispose();
     super.dispose();
   }
 
@@ -83,6 +90,14 @@ class _State extends ConsumerState<RecurringEditorScreen> {
       setState(() => _error = 'Choose a different destination account.');
       return;
     }
+    final savingsProblem = _savings.validate(
+      canEarmark: _canEarmark,
+      flowMinor: minor,
+    );
+    if (savingsProblem != null) {
+      setState(() => _savings.error = savingsProblem);
+      return;
+    }
     final template = RecurringTemplate(
       id: _existing?.id ?? const Uuid().v4(),
       type: _type,
@@ -94,6 +109,7 @@ class _State extends ConsumerState<RecurringEditorScreen> {
       interval: _interval,
       nextRunDate: _start,
       active: _existing?.active ?? true,
+      savingsEffectMinor: _savings.earmarkFor(canEarmark: _canEarmark),
       createdAt: _existing?.createdAt ?? DateTime.now(),
     );
     await ref.read(appDataProvider.notifier).saveRecurring(template);
@@ -105,6 +121,10 @@ class _State extends ConsumerState<RecurringEditorScreen> {
     await ref.read(appDataProvider.notifier).deleteRecurring(_existing!.id);
     if (mounted) context.pop();
   }
+
+  /// A transfer between the owner's own accounts never changes how much is
+  /// reserved, so it has nothing to earmark.
+  bool get _canEarmark => _type != TxnType.transfer;
 
   Future<void> _pickStart() async {
     final picked = await showDatePicker(
@@ -138,20 +158,9 @@ class _State extends ConsumerState<RecurringEditorScreen> {
           : ListView(
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                SegmentedButton<TxnType>(
-                  segments: const [
-                    ButtonSegment(
-                      value: TxnType.expense,
-                      label: Text('Expense'),
-                    ),
-                    ButtonSegment(value: TxnType.income, label: Text('Income')),
-                    ButtonSegment(
-                      value: TxnType.transfer,
-                      label: Text('Transfer'),
-                    ),
-                  ],
-                  selected: {_type},
-                  onSelectionChanged: (s) => setState(() => _type = s.first),
+                TxnTypeSelector(
+                  value: _type,
+                  onChanged: (t) => setState(() => _type = t),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 TextField(
@@ -222,6 +231,24 @@ class _State extends ConsumerState<RecurringEditorScreen> {
                   ],
                   onChanged: (v) => setState(() => _interval = v ?? _interval),
                 ),
+                if (_canEarmark) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  SavingsField(
+                    choice: _savings.choice,
+                    amount: _savings.amount,
+                    categoryEffect:
+                        data?.categoryById(_categoryId)?.savingsEffect ??
+                        SavingsEffect.none,
+                    flowMinor: Money.parse(_amount.text) ?? 0,
+                    code: data?.currencyCode ?? 'PKR',
+                    errorText: _savings.error,
+                    onChoice: (c) => setState(() {
+                      _savings.choice = c;
+                      _savings.error = null;
+                    }),
+                    onChanged: () => setState(() => _savings.error = null),
+                  ),
+                ],
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.event_outlined),
