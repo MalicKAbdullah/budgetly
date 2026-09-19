@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -173,15 +174,25 @@ class _TotalsLine extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
+            flex: 2,
             child: Text(
               '$count ${count == 1 ? 'transaction' : 'transactions'}',
               style: style,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text(
-            'Spent ${Money.format(spent, code: code)}'
-            ' · Income ${Money.format(income, code: code)}',
-            style: style,
+          const SizedBox(width: AppSpacing.sm),
+          // Two amounts side by side outgrow a phone as soon as the figures
+          // reach six digits, so they share the row rather than claiming it.
+          Expanded(
+            flex: 3,
+            child: ValueText(
+              'Spent ${Money.format(spent, code: code)}'
+              ' · Income ${Money.format(income, code: code)}',
+              style: style,
+              alignment: AlignmentDirectional.centerEnd,
+            ),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -73,36 +74,42 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
-        if (_supported) _statusCard(),
-        const SizedBox(height: AppSpacing.md),
-        _sectionTitle(
-          'Needs review${pending.isEmpty ? '' : ' (${pending.length})'}',
+        if (_supported) ...[
+          _statusCard(),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+        SectionHeader(
+          title: 'Needs review${pending.isEmpty ? '' : ' (${pending.length})'}',
         ),
-        const SizedBox(height: AppSpacing.sm),
         if (pending.isEmpty)
           _emptyCard(
             'Nothing to review',
             'New bank or wallet alerts will show up here.',
           )
         else
+          // Each alert is its own decision, so the rows are separated rather
+          // than stacked flush by the shared zero-margin card theme.
           for (final n in pending)
-            _PendingCard(notice: n, currencyCode: data.currencyCode),
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _PendingCard(notice: n, currencyCode: data.currencyCode),
+            ),
         const SizedBox(height: AppSpacing.lg),
-        _sectionTitle('History'),
-        const SizedBox(height: AppSpacing.sm),
+        const SectionHeader(title: 'History'),
         if (history.isEmpty)
           _emptyCard(
             'No history yet',
             'Once you add or dismiss a captured alert, it stays here.',
           )
         else
-          for (final n in history) _HistoryCard(notice: n, data: data),
+          for (final n in history)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _HistoryCard(notice: n, data: data),
+            ),
       ],
     );
   }
-
-  Widget _sectionTitle(String text) =>
-      Text(text, style: Theme.of(context).textTheme.titleSmall);
 
   Widget _emptyCard(String title, String body) => Card(
     child: Padding(
@@ -110,7 +117,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(title, style: AppTextStyles.h4),
           const SizedBox(height: AppSpacing.xs),
           Text(body, style: Theme.of(context).textTheme.bodySmall),
         ],
@@ -134,10 +141,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Turn on auto-capture',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            const Text('Turn on auto-capture', style: AppTextStyles.h4),
             const SizedBox(height: AppSpacing.sm - 2),
             const Text(
               'Let Budgetly read bank/wallet transaction alerts on-device (e.g. '
@@ -179,7 +183,7 @@ class _PendingCard extends StatelessWidget {
               '${parsed.merchant != null ? ' · ${parsed.merchant}' : ''}';
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppSpacing.borderRadiusLg),
         onTap: () => showCaptureReviewSheet(context, notice),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -191,7 +195,7 @@ class _PendingCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(title, style: AppTextStyles.h4),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 notice.rawText,
@@ -259,7 +263,7 @@ class _HistoryCard extends StatelessWidget {
                 '${txn.type.label} · '
                 '${Money.format(txn.amountMinor, code: data.currencyCode)} · '
                 '${DateFormat.yMMMd().format(txn.date)}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: AppTextStyles.h4,
               ),
             const SizedBox(height: AppSpacing.xs),
             Text(
