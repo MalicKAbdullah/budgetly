@@ -138,7 +138,7 @@ class _NetCard extends StatelessWidget {
                 context,
               ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               Money.format(netMinor.abs(), code: code),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(

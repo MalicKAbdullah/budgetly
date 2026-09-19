@@ -109,8 +109,6 @@ class _State extends ConsumerState<RecurringEditorScreen> {
 
   /// A transfer between the owner's own accounts never changes how much is
   /// reserved, so it has nothing to earmark.
-  bool get _canEarmark => _type != TxnType.transfer;
-
   Future<void> _pickStart() async {
     final picked = await showDatePicker(
       context: context,
@@ -216,7 +214,6 @@ class _State extends ConsumerState<RecurringEditorScreen> {
                   ],
                   onChanged: (v) => setState(() => _interval = v ?? _interval),
                 ),
-                if (_canEarmark) ...[const SizedBox(height: AppSpacing.md)],
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.event_outlined),

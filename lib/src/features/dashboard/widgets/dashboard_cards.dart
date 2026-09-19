@@ -147,7 +147,7 @@ class CategoryBreakdown extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xs),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(

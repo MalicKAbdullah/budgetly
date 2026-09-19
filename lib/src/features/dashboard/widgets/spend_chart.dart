@@ -89,7 +89,7 @@ class SpendChart extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

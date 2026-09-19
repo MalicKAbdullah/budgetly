@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,7 +82,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
 
   /// A transfer never changes how much is reserved, and a settlement only
   /// passes money through — neither has anything to earmark.
-  bool get _canEarmark => _type != TxnType.transfer && !_isSettlement;
   bool get _splitOn => _canSplit && _isSplit;
 
   Future<void> _addPerson() async {
@@ -238,7 +238,8 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                   ),
                 ],
                 if (_type == TxnType.expense && !_isSettlement) ...[
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.lg),
+                  const SectionHeader(title: 'Details'),
                   DropdownButtonFormField<String?>(
                     isExpanded: true,
                     initialValue: _categoryId,
@@ -253,6 +254,7 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                     ],
                     onChanged: (v) => setState(() => _categoryId = v),
                   ),
+                  const SizedBox(height: AppSpacing.xs),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Split with someone'),
@@ -274,17 +276,24 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                       onChanged: () => setState(() => _error = null),
                     ),
                 ],
-                if (_canEarmark) ...[const SizedBox(height: AppSpacing.md)],
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
+                const SectionHeader(title: 'When'),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      AppSpacing.borderRadius,
+                    ),
+                  ),
                   leading: const Icon(Icons.calendar_today_outlined),
                   title: const Text('Date'),
                   trailing: Text(DateFormat.yMMMd().format(_date)),
                   onTap: _pickDate,
                 ),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: _note,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
                     labelText: 'Note (optional)',
                   ),

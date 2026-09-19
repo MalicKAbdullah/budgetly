@@ -131,7 +131,7 @@ class _SettleFormState extends State<_SettleForm> {
             _receiving ? '$name pays you back' : 'You pay $name back',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             'Clears the oldest debt first. Not counted as '
             '${_receiving ? 'income' : 'spending'}.',

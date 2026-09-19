@@ -111,7 +111,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(body, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
@@ -138,7 +138,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
               'Turn on auto-capture',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.sm - 2),
             const Text(
               'Let Budgetly read bank/wallet transaction alerts on-device (e.g. '
               'Meezan SMS) so they appear here to confirm — nothing is '
@@ -192,7 +192,7 @@ class _PendingCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 notice.rawText,
                 maxLines: 2,
@@ -261,7 +261,7 @@ class _HistoryCard extends StatelessWidget {
                 '${DateFormat.yMMMd().format(txn.date)}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               notice.rawText,
               maxLines: 2,
