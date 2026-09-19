@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -111,20 +112,28 @@ class _Body extends ConsumerWidget {
         96,
       ),
       children: [
+        // Banners and cards that can vanish carry their own bottom gap, so a
+        // hidden one leaves no hole; everything else is spaced by _Section.
         NotifyTrigger(data: data),
         const UpdateCard(),
         const CaptureBanner(),
         const PeriodFilterBar(),
-        const SizedBox(height: AppSpacing.sm),
-        SummaryCard(spentMinor: spent, incomeMinor: income, code: code),
         const SizedBox(height: AppSpacing.md),
-        SavingsCard(data: data, code: code),
-        SpendChart(
-          buckets: buckets,
-          title: '${filter.label(now)} · spending',
-          code: code,
+        _Section(
+          child: SummaryCard(
+            spentMinor: spent,
+            incomeMinor: income,
+            code: code,
+          ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        SavingsCard(data: data, code: code),
+        _Section(
+          child: SpendChart(
+            buckets: buckets,
+            title: '${filter.label(now)} · spending',
+            code: code,
+          ),
+        ),
         AccountFlowCard(flows: flows, code: code),
         CategoryBreakdown(
           data: data,
@@ -138,59 +147,59 @@ class _Body extends ConsumerWidget {
             context.go('/transactions');
           },
         ),
-        NetWorthCard(data: data, code: code),
-        if (people.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
-          _PeopleCard(people: people, data: data),
-        ],
-        const SizedBox(height: AppSpacing.md),
-        _SectionHeader(
+        _Section(
+          child: NetWorthCard(data: data, code: code),
+        ),
+        if (people.isNotEmpty)
+          _Section(
+            child: _PeopleCard(people: people, data: data),
+          ),
+        SectionHeader(
           title: 'Budgets',
-          action: 'Manage',
+          actionLabel: 'Manage',
           onAction: () => context.go('/budgets'),
         ),
-        if (budgetRows.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
-              child: Text('No spending or budgets yet this month.'),
-            ),
-          )
-        else
-          Card(
-            child: Column(
-              children: [
-                for (final c in budgetRows.take(5))
-                  BudgetRow(spend: c, code: code),
-              ],
-            ),
-          ),
-        const SizedBox(height: AppSpacing.md),
-        _SectionHeader(
+        _Section(
+          child: budgetRows.isEmpty
+              ? const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSpacing.md),
+                    child: Text('No spending or budgets yet this month.'),
+                  ),
+                )
+              : Card(
+                  child: Column(
+                    children: [
+                      for (final c in budgetRows.take(5))
+                        BudgetRow(spend: c, code: code),
+                    ],
+                  ),
+                ),
+        ),
+        SectionHeader(
           title: 'Recent',
-          action: 'All',
+          actionLabel: 'All',
           onAction: () => context.go('/transactions'),
         ),
-        if (recent.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
-              child: Text('No transactions yet. Tap + to add one.'),
-            ),
-          )
-        else
-          Card(
-            child: Column(
-              children: [
-                for (final t in recent.take(6))
-                  TxnTile(
-                    txn: t,
-                    data: data,
-                    onTap: () => context.push('/txn/${t.id}'),
-                  ),
-              ],
-            ),
-          ),
+        recent.isEmpty
+            ? const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.md),
+                  child: Text('No transactions yet. Tap + to add one.'),
+                ),
+              )
+            : Card(
+                child: Column(
+                  children: [
+                    for (final t in recent.take(6))
+                      TxnTile(
+                        txn: t,
+                        data: data,
+                        onTap: () => context.push('/txn/${t.id}'),
+                      ),
+                  ],
+                ),
+              ),
       ],
     );
   }
@@ -232,29 +241,6 @@ class _PeopleCard extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.action,
-    required this.onAction,
-  });
-  final String title;
-  final String action;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-        ),
-        TextButton(onPressed: onAction, child: Text(action)),
-      ],
-    );
-  }
-}
-
 class _EmptyAccounts extends StatelessWidget {
   const _EmptyAccounts();
 
@@ -289,4 +275,19 @@ class _EmptyAccounts extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One dashboard block plus the gap beneath it. Sections that can disappear
+/// (banners, empty cards) carry their own gap instead, so a hidden section
+/// never leaves a hole in the column.
+class _Section extends StatelessWidget {
+  const _Section({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+    child: child,
+  );
 }

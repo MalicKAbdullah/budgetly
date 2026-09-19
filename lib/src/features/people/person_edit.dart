@@ -1,3 +1,4 @@
+import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
@@ -5,7 +6,7 @@ import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/models/person.dart';
 import 'package:budgetly/src/core/providers.dart';
 
-/// Adds a person to the registry from a one-field dialog.
+/// Adds a person to the registry.
 Future<void> showAddPersonDialog(BuildContext context, WidgetRef ref) async {
   final name = await _askForName(context, title: 'Add person');
   if (name == null || name.trim().isEmpty) return;
@@ -91,32 +92,68 @@ Future<String?> _askForName(
   BuildContext context, {
   required String title,
   String initial = '',
-}) {
-  final controller = TextEditingController(text: initial);
-  return showDialog<String>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(
-          labelText: 'Name',
-          hintText: 'e.g. Ali',
-        ),
-        onSubmitted: (v) => Navigator.pop(dialogContext, v),
+}) => Navigator.of(context).push<String>(
+  MaterialPageRoute(
+    fullscreenDialog: true,
+    builder: (_) => _PersonNameScreen(title: title, initial: initial),
+  ),
+);
+
+/// A name is typed on its own page, not in a dialog box: the keyboard never
+/// covers the field, and the save action stays where every other form in the
+/// app puts it.
+class _PersonNameScreen extends StatefulWidget {
+  const _PersonNameScreen({required this.title, required this.initial});
+
+  final String title;
+  final String initial;
+
+  @override
+  State<_PersonNameScreen> createState() => _PersonNameScreenState();
+}
+
+class _PersonNameScreenState extends State<_PersonNameScreen> {
+  late final TextEditingController _name = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _name.text.trim();
+    if (name.isEmpty) return;
+    Navigator.pop(context, name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [TextButton(onPressed: _submit, child: const Text('Save'))],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(dialogContext, controller.text),
-          child: const Text('Save'),
-        ),
-      ],
-    ),
-  ).whenComplete(controller.dispose);
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        children: [
+          TextField(
+            controller: _name,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              hintText: 'e.g. Ali',
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          FilledButton(onPressed: _submit, child: const Text('Save')),
+        ],
+      ),
+    );
+  }
 }
