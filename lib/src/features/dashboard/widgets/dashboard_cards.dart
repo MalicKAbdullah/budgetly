@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/balances.dart';
@@ -27,60 +28,33 @@ class SummaryCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stat(
-              label: 'Spent',
-              value: Money.format(spentMinor, code: code),
+            Expanded(
+              child: StatTile(
+                label: 'Spent',
+                value: Money.format(spentMinor, code: code),
+              ),
             ),
-            Stat(
-              label: 'Income',
-              value: Money.format(incomeMinor, code: code),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: StatTile(
+                label: 'Income',
+                value: Money.format(incomeMinor, code: code),
+              ),
             ),
-            Stat(
-              label: 'Net',
-              value: Money.format(net, code: code),
-              color: net < 0
-                  ? AppColors.warning(Theme.of(context).brightness)
-                  : null,
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: StatTile(
+                label: 'Net',
+                value: Money.format(net, code: code),
+                valueColor: net < 0
+                    ? AppColors.warning(Theme.of(context).brightness)
+                    : null,
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class Stat extends StatelessWidget {
-  const Stat({required this.label, required this.value, this.color, super.key});
-  final String label;
-  final String value;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    // Left-aligned like every other card row — centered columns looked off
-    // against the rest of the dashboard.
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -150,15 +124,21 @@ class CategoryBreakdown extends StatelessWidget {
                         Row(
                           children: [
                             Expanded(
+                              flex: 3,
                               child: Text(
                                 nameFor(c.key),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            Text(
-                              Money.format(c.value, code: code),
-                              style: Theme.of(context).textTheme.bodySmall,
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              flex: 2,
+                              child: ValueText(
+                                Money.format(c.value, code: code),
+                                style: AppTextStyles.numberSmall,
+                                alignment: AlignmentDirectional.centerEnd,
+                              ),
                             ),
                             Icon(
                               Icons.chevron_right,
@@ -220,28 +200,36 @@ class AccountFlowCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               for (final f in flows)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                   child: Row(
                     children: [
                       Expanded(
+                        flex: 4,
                         child: Text(
                           f.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        '+${Money.format(f.inMinor, code: code)}',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: inColor),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        flex: 3,
+                        child: ValueText(
+                          '+${Money.format(f.inMinor, code: code)}',
+                          style: AppTextStyles.numberSmall,
+                          color: inColor,
+                          alignment: AlignmentDirectional.centerEnd,
+                        ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        '-${Money.format(f.outMinor, code: code)}',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: outColor),
+                      Expanded(
+                        flex: 3,
+                        child: ValueText(
+                          '-${Money.format(f.outMinor, code: code)}',
+                          style: AppTextStyles.numberSmall,
+                          color: outColor,
+                          alignment: AlignmentDirectional.centerEnd,
+                        ),
                       ),
                     ],
                   ),
@@ -268,32 +256,50 @@ class NetWorthCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
+                  flex: 3,
                   child: Text(
                     'Total balance',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
-                Text(
-                  Money.format(Balances.netWorthMinor(data), code: code),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  flex: 4,
+                  child: ValueText(
+                    Money.format(Balances.netWorthMinor(data), code: code),
+                    style: AppTextStyles.number,
+                    alignment: AlignmentDirectional.centerEnd,
                   ),
                 ),
               ],
             ),
-            const Divider(),
+            const Divider(height: AppSpacing.lg),
             for (final a in data.activeAccounts)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Row(
                   children: [
-                    Expanded(child: Text(a.name)),
-                    Text(
-                      Money.format(
-                        Balances.accountBalanceMinor(data, a.id),
-                        code: code,
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        a.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      flex: 4,
+                      child: ValueText(
+                        Money.format(
+                          Balances.accountBalanceMinor(data, a.id),
+                          code: code,
+                        ),
+                        style: AppTextStyles.numberSmall,
+                        alignment: AlignmentDirectional.centerEnd,
                       ),
                     ),
                   ],
@@ -324,23 +330,41 @@ class BudgetRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(spend.name)),
-              Text(
-                spend.hasBudget
-                    ? '${Money.format(spend.spentMinor, code: code)} / '
-                          '${Money.format(spend.budgetMinor, code: code)}'
-                    : Money.format(spend.spentMinor, code: code),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              Expanded(
+                flex: 3,
+                child: Text(
+                  spend.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                flex: 4,
+                child: ValueText(
+                  spend.hasBudget
+                      ? '${Money.format(spend.spentMinor, code: code)} / '
+                            '${Money.format(spend.budgetMinor, code: code)}'
+                      : Money.format(spend.spentMinor, code: code),
+                  style: AppTextStyles.numberSmall,
                   color: spend.overBudget ? warn : null,
+                  alignment: AlignmentDirectional.centerEnd,
                 ),
               ),
             ],
           ),
           if (spend.hasBudget) ...[
-            const SizedBox(height: 4),
-            LinearProgressIndicator(
-              value: spend.progress,
-              color: spend.overBudget ? warn : null,
+            const SizedBox(height: AppSpacing.sm),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: spend.progress,
+                minHeight: 6,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
+                color: spend.overBudget ? warn : null,
+              ),
             ),
           ],
         ],

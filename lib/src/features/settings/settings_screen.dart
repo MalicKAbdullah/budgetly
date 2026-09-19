@@ -85,6 +85,7 @@ class SettingsScreen extends ConsumerWidget {
             child: AutoBackupSection(
               service: ref.watch(autoBackupServiceProvider),
               producer: ref.watch(budgetlyBackupProducerProvider),
+              onRevealGate: () => _confirmReveal(context, ref),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -114,6 +115,37 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Guards showing the stored backup passphrase. Uses the device biometric /
+  /// credential prompt when one is available, and falls back to a deliberate
+  /// confirmation on devices that have none.
+  Future<bool> _confirmReveal(BuildContext context, WidgetRef ref) async {
+    final deviceAuth = ref.read(deviceAuthProvider);
+    if (await deviceAuth.canAuthenticate()) {
+      return deviceAuth.authenticate(reason: 'Show your backup passphrase');
+    }
+    if (!context.mounted) return false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Show passphrase?'),
+        content: const Text(
+          'It will appear on screen. Make sure nobody else can see it.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Show'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   Future<void> _restore(BuildContext context, WidgetRef ref) async {

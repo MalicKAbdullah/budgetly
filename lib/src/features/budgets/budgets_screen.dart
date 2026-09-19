@@ -49,16 +49,22 @@ class BudgetsScreen extends ConsumerWidget {
                 'Add categories to track budgets — use the + button.',
               ),
             )
-          : ListView(
+          : ListView.separated(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md,
                 AppSpacing.md,
                 AppSpacing.md,
                 96,
               ),
-              children: [
-                for (final c in rows)
-                  Card(
+              // The shared card theme has a zero margin so cards can be
+              // stacked flush where that is wanted; a list of independent
+              // categories is not one of those places and sets its own gap.
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+              itemCount: _rowCount(rows.length, uncategorized),
+              itemBuilder: (context, index) {
+                if (index < rows.length) {
+                  final c = rows[index];
+                  return Card(
                     child: ListTile(
                       leading: _savingsBadge(
                         data?.categoryById(c.categoryId)?.savingsEffect ??
@@ -91,26 +97,33 @@ class BudgetsScreen extends ConsumerWidget {
                           .read(appDataProvider.notifier)
                           .deleteCategory(c.categoryId),
                     ),
-                  ),
-                if (uncategorized > 0)
-                  Card(
+                  );
+                }
+                if (uncategorized > 0 && index == rows.length) {
+                  return Card(
                     child: ListTile(
                       title: const Text('Uncategorized'),
                       trailing: Text(Money.format(uncategorized, code: code)),
                     ),
-                  ),
-                const Padding(
+                  );
+                }
+                return const Padding(
                   padding: EdgeInsets.all(AppSpacing.sm),
                   child: Text(
                     'Tap to edit · long-press to delete.',
                     style: TextStyle(fontSize: 12),
                   ),
-                ),
-              ],
+                );
+              },
             ),
     );
   }
 }
+
+/// Category rows, then the uncategorized row when there is one, then the
+/// footer hint.
+int _rowCount(int categories, int uncategorizedMinor) =>
+    categories + (uncategorizedMinor > 0 ? 1 : 0) + 1;
 
 /// Marks the categories whose money is a savings movement, so the rule is
 /// visible without opening each one.

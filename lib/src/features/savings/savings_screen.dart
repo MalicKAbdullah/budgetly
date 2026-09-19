@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +8,6 @@ import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/core/widgets/period_filter_bar.dart';
-import 'package:budgetly/src/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:budgetly/src/features/savings/savings_bulk_screen.dart';
 import 'package:budgetly/src/features/savings/savings_target_screen.dart';
 import 'package:budgetly/src/features/savings/widgets/savings_movement_tile.dart';
@@ -103,21 +103,33 @@ class _Body extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Stat(
-                      label: 'Reserved',
-                      value: Money.format(figures.reservedMinor, code: code),
+                    Expanded(
+                      child: StatTile(
+                        label: 'Reserved',
+                        value: Money.format(figures.reservedMinor, code: code),
+                      ),
                     ),
-                    Stat(
-                      label: 'Total money',
-                      value: Money.format(figures.totalMinor, code: code),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: StatTile(
+                        label: 'Total money',
+                        value: Money.format(figures.totalMinor, code: code),
+                      ),
                     ),
-                    Stat(
-                      label: 'Safe to spend',
-                      value: Money.format(figures.safeToSpendMinor, code: code),
-                      color: figures.safeToSpendMinor < 0
-                          ? AppColors.warning(brightness)
-                          : null,
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: StatTile(
+                        label: 'Safe to spend',
+                        value: Money.format(
+                          figures.safeToSpendMinor,
+                          code: code,
+                        ),
+                        valueColor: figures.safeToSpendMinor < 0
+                            ? AppColors.warning(brightness)
+                            : null,
+                      ),
                     ),
                   ],
                 ),

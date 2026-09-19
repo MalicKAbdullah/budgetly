@@ -46,16 +46,37 @@ class TxnFilterBar extends StatelessWidget {
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               isDense: true,
-              prefixIcon: const Icon(Icons.search),
+              // The shared theme pads 16px vertically for full-size form
+              // fields; a search box sits in a list header and has to stay
+              // compact, so it sets its own rhythm. The icon constraints keep
+              // the 48px minimum tap target from driving the field's height.
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.sm + 2,
+              ),
+              prefixIcon: const Icon(Icons.search, size: 20),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
               hintText: 'Search notes, people, accounts',
-              border: const OutlineInputBorder(),
               suffixIcon: searchController.text.isEmpty
                   ? null
                   : IconButton(
                       tooltip: 'Clear search',
-                      icon: const Icon(Icons.close),
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 40,
+                        minHeight: 40,
+                      ),
+                      icon: const Icon(Icons.close, size: 18),
                       onPressed: () => searchController.clear(),
                     ),
+              suffixIconConstraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
             ),
           ),
         ),

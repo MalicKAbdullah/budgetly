@@ -1,9 +1,9 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/money.dart';
-import 'package:budgetly/src/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:budgetly/src/features/savings/widgets/savings_view.dart';
 
 /// Savings at a glance: what has to stay put, what is actually free to spend,
@@ -57,17 +57,26 @@ class SavingsCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Stat(
-                      label: 'Reserved',
-                      value: Money.format(figures.reservedMinor, code: code),
+                    Expanded(
+                      child: StatTile(
+                        label: 'Reserved',
+                        value: Money.format(figures.reservedMinor, code: code),
+                      ),
                     ),
-                    Stat(
-                      label: 'Safe to spend',
-                      value: Money.format(figures.safeToSpendMinor, code: code),
-                      color: figures.safeToSpendMinor < 0
-                          ? AppColors.warning(brightness)
-                          : null,
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: StatTile(
+                        label: 'Safe to spend',
+                        value: Money.format(
+                          figures.safeToSpendMinor,
+                          code: code,
+                        ),
+                        valueColor: figures.safeToSpendMinor < 0
+                            ? AppColors.warning(brightness)
+                            : null,
+                      ),
                     ),
                   ],
                 ),
