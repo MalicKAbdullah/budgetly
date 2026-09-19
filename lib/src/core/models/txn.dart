@@ -52,6 +52,7 @@ final class Txn {
     this.splits = const <TxnSplit>[],
     this.personId,
     this.savingsEffectMinor,
+    this.receivableCountsAsSavings = false,
     required this.createdAt,
   });
 
@@ -74,6 +75,8 @@ final class Txn {
         .toList(),
     personId: json['personId'] as String?,
     savingsEffectMinor: (json['savingsEffectMinor'] as num?)?.toInt(),
+    receivableCountsAsSavings:
+        json['receivableCountsAsSavings'] as bool? ?? false,
     createdAt: DateTime.parse(json['createdAt'] as String),
   );
 
@@ -133,6 +136,18 @@ final class Txn {
   /// transfer carries no effect whatever this field or the category says.
   final int? savingsEffectMinor;
 
+  /// Whether money the owner fronted and is owed back still counts as their
+  /// own for savings.
+  ///
+  /// Lending a friend cash genuinely removes it from what the owner has, so the
+  /// default is false. Turn it on when the owner is only passing money through
+  /// on somebody else's behalf — the amount never really left them, and
+  /// excluding it would understate what they hold.
+  ///
+  /// Only meaningful while [reimbursableMinor] is outstanding; on any other
+  /// transaction it is inert.
+  final bool receivableCountsAsSavings;
+
   final DateTime createdAt;
 
   /// A settlement is money in transit — never income, never spending.
@@ -186,6 +201,7 @@ final class Txn {
     List<TxnSplit>? splits,
     String? personId,
     Object? savingsEffectMinor = _keep,
+    bool? receivableCountsAsSavings,
   }) => Txn(
     id: id,
     type: type ?? this.type,
@@ -205,6 +221,8 @@ final class Txn {
     savingsEffectMinor: savingsEffectMinor == _keep
         ? this.savingsEffectMinor
         : savingsEffectMinor as int?,
+    receivableCountsAsSavings:
+        receivableCountsAsSavings ?? this.receivableCountsAsSavings,
     createdAt: createdAt,
   );
 

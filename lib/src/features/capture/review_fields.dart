@@ -50,11 +50,7 @@ class AccountPicker extends StatelessWidget {
   Widget build(BuildContext context) => DropdownButtonFormField<String>(
     isExpanded: true,
     initialValue: accounts.any((a) => a.id == value) ? value : null,
-    decoration: InputDecoration(
-      labelText: label,
-      errorText: errorText,
-      border: const OutlineInputBorder(),
-    ),
+    decoration: InputDecoration(labelText: label, errorText: errorText),
     items: [
       // Just the name: an account called "Cash" of type Cash would otherwise
       // read "Cash · Cash".
@@ -83,10 +79,7 @@ class CategoryPicker extends StatelessWidget {
   Widget build(BuildContext context) => DropdownButtonFormField<String?>(
     isExpanded: true,
     initialValue: value,
-    decoration: const InputDecoration(
-      labelText: 'Category',
-      border: OutlineInputBorder(),
-    ),
+    decoration: const InputDecoration(labelText: 'Category'),
     items: [
       const DropdownMenuItem(value: null, child: Text('Uncategorized')),
       for (final c in categories)

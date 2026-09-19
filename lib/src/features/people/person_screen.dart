@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/core/widgets/txn_tile.dart';
 import 'package:budgetly/src/features/people/person_edit.dart';
@@ -194,9 +195,8 @@ class _Section extends StatelessWidget {
                       '${e.settledMinor > 0 ? ' · ${Money.format(e.settledMinor, code: code)} settled' : ''}',
                       maxLines: 2,
                     ),
-                    trailing: Text(
-                      Money.format(e.outstandingMinor, code: code),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    trailing: MoneyTrailing(
+                      amount: Money.format(e.outstandingMinor, code: code),
                     ),
                   ),
               ],

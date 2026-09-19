@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:uuid/uuid.dart';
 
@@ -80,11 +81,12 @@ class BudgetsScreen extends ConsumerWidget {
                               ),
                             )
                           : const Text('No budget set'),
-                      trailing: Text(
-                        c.hasBudget
-                            ? '${Money.format(c.spentMinor, code: code)} / ${Money.format(c.budgetMinor, code: code)}'
-                            : Money.format(c.spentMinor, code: code),
-                        style: TextStyle(color: c.overBudget ? warn : null),
+                      trailing: MoneyTrailing(
+                        amount: Money.format(c.spentMinor, code: code),
+                        secondary: c.hasBudget
+                            ? 'of ${Money.format(c.budgetMinor, code: code)}'
+                            : null,
+                        color: c.overBudget ? warn : null,
                       ),
                       onTap: () => _edit(
                         context,
@@ -103,7 +105,9 @@ class BudgetsScreen extends ConsumerWidget {
                   return Card(
                     child: ListTile(
                       title: const Text('Uncategorized'),
-                      trailing: Text(Money.format(uncategorized, code: code)),
+                      trailing: MoneyTrailing(
+                        amount: Money.format(uncategorized, code: code),
+                      ),
                     ),
                   );
                 }
@@ -209,10 +213,7 @@ class _CategoryFormState extends State<_CategoryForm> {
             controller: _name,
             autofocus: true,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Name',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Name'),
           ),
           const SizedBox(height: AppSpacing.md),
           TextField(
@@ -221,7 +222,6 @@ class _CategoryFormState extends State<_CategoryForm> {
             decoration: const InputDecoration(
               labelText: 'Monthly budget (optional)',
               helperText: 'Leave blank to just track spending',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -235,7 +235,6 @@ class _CategoryFormState extends State<_CategoryForm> {
                   'the ones you have already recorded. Money moved in or out '
                   'of savings is not counted as spending or income.',
               helperMaxLines: 4,
-              border: OutlineInputBorder(),
             ),
             items: [
               for (final e in SavingsEffect.values)

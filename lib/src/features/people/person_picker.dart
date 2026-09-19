@@ -77,7 +77,6 @@ class _PersonPickerSheetState extends ConsumerState<_PersonPickerSheet> {
               labelText: 'Name',
               hintText: 'e.g. Ali',
               prefixIcon: Icon(Icons.person_outline),
-              border: OutlineInputBorder(),
             ),
             onChanged: (_) => setState(() {}),
             onSubmitted: (_) => exactMatch ? null : _addTyped(data),

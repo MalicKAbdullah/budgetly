@@ -7,6 +7,7 @@ import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/logic/split_text.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 
 /// What this transaction means for the split ledger: for a settlement, who it
 /// squares up with; for a split, how much of it is still open. Null when the
@@ -49,9 +50,8 @@ class _SettlementCard extends StatelessWidget {
               'Money passing through — not counted as income or spending. '
               'It clears the oldest debt first.',
             ),
-            trailing: Text(
-              Money.format(txn.amountMinor, code: code),
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            trailing: MoneyTrailing(
+              amount: Money.format(txn.amountMinor, code: code),
             ),
           ),
           ListTile(
@@ -106,9 +106,9 @@ class _SplitCard extends StatelessWidget {
               '${Money.format(original, code: code)} settled',
             ),
             isThreeLine: true,
-            trailing: Text(
-              '${Money.format(open, code: code)} left',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            trailing: MoneyTrailing(
+              amount: Money.format(open, code: code),
+              secondary: 'left',
             ),
           ),
           if (people.isEmpty)

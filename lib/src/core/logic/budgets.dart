@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:budgetly/src/core/data/app_data.dart';
-import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 
 /// A category's spend against its monthly budget, for one month.
@@ -54,7 +53,7 @@ abstract final class Budgets {
             t.categoryId == categoryId &&
             inMonth(t.date, month),
       )
-      .fold(0, (sum, t) => sum + Savings.spendableShareMinor(t, data));
+      .fold(0, (sum, t) => sum + t.ownShareMinor);
 
   static int totalSpentInMonthMinor(AppData data, DateTime month) => data.txns
       .where(
@@ -63,7 +62,7 @@ abstract final class Budgets {
             !t.isSettlement &&
             inMonth(t.date, month),
       )
-      .fold(0, (sum, t) => sum + Savings.spendableShareMinor(t, data));
+      .fold(0, (sum, t) => sum + t.ownShareMinor);
 
   static int totalIncomeInMonthMinor(AppData data, DateTime month) => data.txns
       .where(
@@ -72,7 +71,7 @@ abstract final class Budgets {
             !t.isSettlement &&
             inMonth(t.date, month),
       )
-      .fold(0, (sum, t) => sum + Savings.spendableShareMinor(t, data));
+      .fold(0, (sum, t) => sum + t.ownShareMinor);
 
   static int totalMonthlyBudgetMinor(AppData data) =>
       data.categories.fold(0, (sum, c) => sum + c.monthlyBudgetMinor);
@@ -106,6 +105,6 @@ abstract final class Budgets {
               inMonth(t.date, month) &&
               !ids.contains(t.categoryId),
         )
-        .fold(0, (sum, t) => sum + Savings.spendableShareMinor(t, data));
+        .fold(0, (sum, t) => sum + t.ownShareMinor);
   }
 }

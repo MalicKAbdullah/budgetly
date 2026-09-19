@@ -64,7 +64,6 @@ class _SavingsTargetScreenState extends State<SavingsTargetScreen> {
               prefixText: '${widget.code} ',
               helperText: 'Leave blank for no target',
               errorText: _error,
-              border: const OutlineInputBorder(),
             ),
             onChanged: (_) => setState(() => _error = null),
           ),

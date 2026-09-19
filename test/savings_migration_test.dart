@@ -179,15 +179,25 @@ void main() {
       expect(PeopleLedger.totalOwedToYouMinor(data), 2500);
     });
 
-    test('savings starts at zero with no target', () {
+    test('the position is exactly what the owner holds, with no target', () {
+      final p = Savings.position(data);
       expect(data.savingsTargetMinor, 0);
-      expect(Savings.reservedMinor(data), 0);
-      expect(Savings.savedInRangeMinor(data, start, end), 0);
-      expect(Savings.movements(data), isEmpty);
-      // Nothing is silently earmarked, so everything is free to spend.
-      expect(Savings.safeToSpendMinor(data), 765500);
-      expect(Savings.isDipping(data), isFalse);
-      expect(Savings.varianceMinor(data), 0);
+      // Money lent out is not counted unless the owner says so, and this
+      // vault predates that flag — so the position is plain net worth.
+      expect(p.heldMinor, 765500);
+      expect(p.countedReceivablesMinor, 0);
+      expect(p.uncountedReceivablesMinor, 2500);
+      expect(p.positionMinor, 765500);
+      expect(p.freeToSpendMinor, 765500);
+      expect(p.isDipping, isFalse);
+      expect(p.hasTarget, isFalse);
+    });
+
+    test('the window carries earlier money in rather than losing it', () {
+      final w = Savings.period(data, start, end);
+      expect(w.closingMinor, 765500);
+      // Opening balances are timeless, so they are already carried in.
+      expect(w.carriedInMinor + w.changeMinor, w.closingMinor);
     });
 
     test('every record inherits, and no category carries a rule', () {
@@ -232,28 +242,52 @@ void main() {
       expect(DashboardFlow.incomeInRange(round, start, end), 250000);
       expect(Balances.netWorthMinor(round), 765500);
       expect(PeopleLedger.forKey(round, 'p-ali')!.owedToYouMinor, 2500);
-      expect(Savings.reservedMinor(round), 0);
+      expect(Savings.position(round).positionMinor, 765500);
     });
 
-    test('a savings rule written today survives a round-trip', () {
-      final withSavings = data.copyWith(
-        savingsTargetMinor: 50000,
-        categories: [
-          data.categories.first.copyWith(
-            savingsEffect: SavingsEffect.addsToSavings,
-          ),
-          ...data.categories.skip(1),
-        ],
-      );
+    test('a target written today survives a round-trip', () {
+      final withTarget = data.copyWith(savingsTargetMinor: 50000);
       final again = AppData.fromJson(
-        jsonDecode(jsonEncode(withSavings.toJson())) as Map<String, dynamic>,
+        jsonDecode(jsonEncode(withTarget.toJson())) as Map<String, dynamic>,
       );
       expect(again.savingsTargetMinor, 50000);
-      // The food rule now counts the dinner's own share, retroactively.
-      expect(Savings.reservedMinor(again), 2000);
-      expect(Savings.varianceMinor(again), -48000);
-      // And that money is no longer read as spending.
-      expect(DashboardFlow.spentInRange(again, start, end), 80000);
+      expect(Savings.position(again).freeToSpendMinor, 765500 - 50000);
+      // A target reserves nothing, so spending is untouched by it.
+      expect(DashboardFlow.spentInRange(again, start, end), 82000);
+    });
+
+    test(
+      'an old earmark is kept in the vault but no longer moves a number',
+      () {
+        final earmarked = data.copyWith(
+          txns: [
+            for (final t in data.txns)
+              if (t.id == 'salary')
+                t.copyWith(savingsEffectMinor: 100000)
+              else
+                t,
+          ],
+        );
+        final again = AppData.fromJson(
+          jsonDecode(jsonEncode(earmarked.toJson())) as Map<String, dynamic>,
+        );
+        // Preserved byte for byte, so nothing the owner recorded is lost.
+        expect(again.txnById('salary')!.savingsEffectMinor, 100000);
+        // But balances, income and the position are all exactly as before.
+        expect(Balances.netWorthMinor(again), 765500);
+        expect(DashboardFlow.incomeInRange(again, start, end), 250000);
+        expect(Savings.position(again).positionMinor, 765500);
+      },
+    );
+
+    test('no record gains the new receivable flag on its own', () {
+      expect(data.txns.every((t) => !t.receivableCountsAsSavings), isTrue);
+      expect(
+        data.txns.every(
+          (t) => !t.toJson().containsKey('receivableCountsAsSavings'),
+        ),
+        isTrue,
+      );
     });
   });
 }

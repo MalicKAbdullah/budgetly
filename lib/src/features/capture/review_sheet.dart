@@ -200,7 +200,6 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
               decoration: InputDecoration(
                 labelText: 'Amount',
                 prefixText: Money.symbol(code),
-                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -210,7 +209,6 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
               decoration: const InputDecoration(
                 labelText: 'Purpose / note',
                 hintText: 'What was this for?',
-                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: AppSpacing.md),

@@ -14,7 +14,6 @@ import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/core/widgets/txn_type_selector.dart';
 import 'package:budgetly/src/features/people/person_picker.dart';
 import 'package:budgetly/src/features/transactions/account_dropdown.dart';
-import 'package:budgetly/src/features/transactions/savings_field.dart';
 import 'package:budgetly/src/features/transactions/split_fields.dart';
 import 'package:budgetly/src/features/transactions/txn_links.dart';
 import 'package:uuid/uuid.dart';
@@ -32,7 +31,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
 
   final _amount = TextEditingController();
   final _note = TextEditingController();
-  final _savings = SavingsDraft();
   final _split = SplitDraft();
 
   bool _isSplit = false;
@@ -57,7 +55,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
       _accountId = accounts.isNotEmpty ? accounts.first.id : null;
       return;
     }
-    _savings.load(existing);
     _type = existing.type;
     _amount.text = Money.toInput(existing.amountMinor);
     _accountId = existing.accountId;
@@ -75,7 +72,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
   void dispose() {
     _amount.dispose();
     _note.dispose();
-    _savings.dispose();
     _split.dispose();
     super.dispose();
   }
@@ -139,20 +135,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
       return;
     }
 
-    // What this movement costs or earns — the ceiling on what it can earmark,
-    // because money that never moved cannot be reserved.
-    final flow = _type == TxnType.expense
-        ? paid - reimbursable + payable
-        : paid;
-    final savingsProblem = _savings.validate(
-      canEarmark: _canEarmark,
-      flowMinor: flow,
-    );
-    if (savingsProblem != null) {
-      setState(() => _savings.error = savingsProblem);
-      return;
-    }
-
     final txn = Txn(
       id: _existing?.id ?? _uuid.v4(),
       type: _type,
@@ -171,7 +153,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
       settlement: _existing?.settlement ?? false,
       // Preserve the legacy repayment→expense link when editing a repayment.
       reimbursesTxnId: _existing?.reimbursesTxnId,
-      savingsEffectMinor: _savings.earmarkFor(canEarmark: _canEarmark),
       createdAt: _existing?.createdAt ?? DateTime.now(),
     );
     await ref.read(appDataProvider.notifier).saveTxn(txn);
@@ -192,14 +173,6 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
       lastDate: DateTime(2100),
     );
     if (picked != null) setState(() => _date = picked);
-  }
-
-  /// What the inherit preview shows the category rule resolving to, from the
-  /// amounts currently typed in.
-  int _flowPreviewMinor() {
-    final paid = Money.parse(_amount.text) ?? 0;
-    if (_type != TxnType.expense) return paid;
-    return paid - _split.reimbursableMinor + _split.payableMinor;
   }
 
   @override
@@ -301,26 +274,7 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                       onChanged: () => setState(() => _error = null),
                     ),
                 ],
-                if (_canEarmark) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  SavingsField(
-                    choice: _savings.choice,
-                    amount: _savings.amount,
-                    categoryEffect:
-                        (data ?? const AppData())
-                            .categoryById(_categoryId)
-                            ?.savingsEffect ??
-                        SavingsEffect.none,
-                    flowMinor: _flowPreviewMinor(),
-                    code: code,
-                    errorText: _savings.error,
-                    onChoice: (c) => setState(() {
-                      _savings.choice = c;
-                      _savings.error = null;
-                    }),
-                    onChanged: () => setState(() => _savings.error = null),
-                  ),
-                ],
+                if (_canEarmark) ...[const SizedBox(height: AppSpacing.md)],
                 const SizedBox(height: AppSpacing.md),
                 ListTile(
                   contentPadding: EdgeInsets.zero,

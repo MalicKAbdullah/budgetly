@@ -3,11 +3,13 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/features/savings/widgets/savings_view.dart';
 
-/// Savings at a glance: what has to stay put, what is actually free to spend,
-/// and how that sits against the target. Tapping it opens the savings screen.
+/// Savings at a glance. The headline is the one number the owner acts on —
+/// what is free to spend right now — with what they hold and their target
+/// underneath it. Tapping it opens the savings screen.
 class SavingsCard extends StatelessWidget {
   const SavingsCard({required this.data, required this.code, super.key});
 
@@ -16,7 +18,7 @@ class SavingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final figures = SavingsFigures.from(data);
+    final p = Savings.position(data);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final brightness = Theme.of(context).brightness;
@@ -26,7 +28,7 @@ class SavingsCard extends StatelessWidget {
       child: Card(
         child: InkWell(
           onTap: () => context.push('/savings'),
-          borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+          borderRadius: BorderRadius.circular(AppSpacing.borderRadiusLg),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
@@ -61,31 +63,49 @@ class SavingsCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: StatTile(
-                        label: 'Reserved',
-                        value: Money.format(figures.reservedMinor, code: code),
+                        label: p.hasTarget ? 'Free to spend' : 'Holding',
+                        value: Money.format(
+                          p.hasTarget ? p.freeToSpendMinor : p.positionMinor,
+                          code: code,
+                        ),
+                        valueColor: p.isDipping
+                            ? AppColors.warning(brightness)
+                            : null,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: StatTile(
-                        label: 'Safe to spend',
+                        label: p.hasTarget ? 'Holding' : 'Target',
                         value: Money.format(
-                          figures.safeToSpendMinor,
+                          p.hasTarget ? p.positionMinor : 0,
                           code: code,
                         ),
-                        valueColor: figures.safeToSpendMinor < 0
-                            ? AppColors.warning(brightness)
-                            : null,
+                        caption: p.hasTarget
+                            ? 'Target ${Money.format(p.targetMinor, code: code)}'
+                            : 'Not set',
                       ),
                     ),
                   ],
                 ),
+                if (p.uncountedReceivablesMinor > 0) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    '${Money.format(p.uncountedReceivablesMinor, code: code)} '
+                    'lent out, not counted',
+                    style: text.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.sm),
-                SavingsProgress(figures: figures, code: code),
-                if (figures.isDipping) ...[
+                SavingsProgress(position: p, code: code),
+                if (p.isDipping) ...[
                   const SizedBox(height: AppSpacing.sm),
                   SavingsDipWarning(
-                    shortfallMinor: figures.shortfallMinor,
+                    shortfallMinor: -p.freeToSpendMinor,
                     code: code,
                   ),
                 ],

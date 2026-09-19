@@ -1,10 +1,12 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/features/people/person_edit.dart';
 
@@ -178,9 +180,9 @@ class PersonRow extends StatelessWidget {
       subtitle: Text(line, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: net == 0
           ? Icon(Icons.check, color: scheme.onSurfaceVariant)
-          : Text(
-              Money.format(net.abs(), code: code),
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          : MoneyTrailing(
+              amount: Money.format(net.abs(), code: code),
+              color: color,
             ),
     );
   }
@@ -208,53 +210,25 @@ class _TotalsCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Half(
-              label: 'Owed to you',
-              value: Money.format(owedToYouMinor, code: code),
-              color: scheme.primary,
+            Expanded(
+              child: StatTile(
+                label: 'Owed to you',
+                value: Money.format(owedToYouMinor, code: code),
+                valueColor: scheme.primary,
+              ),
             ),
-            _Half(
-              label: 'You owe',
-              value: Money.format(youOweMinor, code: code),
-              color: warn,
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: StatTile(
+                label: 'You owe',
+                value: Money.format(youOweMinor, code: code),
+                valueColor: warn,
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Half extends StatelessWidget {
-  const _Half({required this.label, required this.value, required this.color});
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }

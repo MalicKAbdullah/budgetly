@@ -6,17 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
-import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/core/storage/vault_file.dart';
-import 'package:budgetly/src/core/widgets/txn_tile.dart';
 import 'package:budgetly/src/features/dashboard/dashboard_screen.dart';
 import 'package:budgetly/src/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:budgetly/src/features/dashboard/widgets/savings_card.dart';
-import 'package:budgetly/src/features/savings/savings_bulk_screen.dart';
 import 'package:budgetly/src/features/savings/savings_screen.dart';
 import 'package:budgetly/src/features/savings/savings_target_screen.dart';
 import 'package:budgetly/src/features/savings/widgets/savings_view.dart';
@@ -155,16 +152,14 @@ void main() {
   ) async {
     await pumpApp(tester);
 
-    // Rs 5,000 put away; Rs 100,000 opening less the Rs 8,000 that moved.
-    expect(inCard('Reserved'), findsOneWidget);
-    expect(inCard('Rs 5,000'), findsOneWidget);
-    expect(inCard('Safe to spend'), findsOneWidget);
-    expect(inCard('Rs 87,000'), findsOneWidget);
-    // The Rs 5,000 put away is not spending: only the grocery run is.
+    // Rs 100,000 opening less the Rs 8,000 that actually left the account.
+    expect(inCard('Holding'), findsWidgets);
+    expect(inCard('Rs 92,000'), findsWidgets);
+    // Both movements are real spending now — nothing is earmarked away.
     expect(
       find.descendant(
         of: find.byType(SummaryCard),
-        matching: find.text('Rs 3,000'),
+        matching: find.text('Rs 8,000'),
       ),
       findsOneWidget,
     );
@@ -178,11 +173,10 @@ void main() {
 
     await openSavings(tester);
     expect(find.byType(SavingsScreen), findsOneWidget);
-    expect(find.text('Total money'), findsOneWidget);
-    expect(find.text('Saved in this month'), findsOneWidget);
-    // The movement names the transaction behind it.
-    expect(find.text('Savings pot'), findsWidgets);
-    expect(find.textContaining('from this category\'s rule'), findsOneWidget);
+    // Carry-over is on the screen, so earlier months can never fall off it.
+    expect(find.text('Carried in'), findsOneWidget);
+    expect(find.text('At end'), findsOneWidget);
+    expect(find.text('Money lent out'), findsOneWidget);
   });
 
   testWidgets('setting a target shows the +/- against it', (tester) async {
@@ -206,90 +200,10 @@ void main() {
     expect(
       find.descendant(
         of: find.byType(SavingsProgress),
-        matching: find.text('-Rs 3,000 short of target'),
+        matching: find.text('Rs 84,000 free to spend'),
       ),
-      findsOneWidget,
+      findsWidgets,
     );
-    expect(find.text('Target Rs 8,000'), findsOneWidget);
-  });
-
-  testWidgets('the bulk list earmarks a selection in one pass', (tester) async {
-    await pumpApp(tester);
-    await openSavings(tester);
-
-    await tester.tap(
-      find.widgetWithText(FloatingActionButton, 'Earmark transactions'),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byType(SavingsBulkScreen), findsOneWidget);
-
-    // Only the un-earmarked grocery run is picked.
-    await tester.tap(find.widgetWithText(CheckboxListTile, 'Groceries'));
-    await tester.pumpAndSettle();
-    expect(find.text('1 selected'), findsOneWidget);
-
-    await tester.tap(find.widgetWithText(FilledButton, 'Move to savings'));
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(seconds: 6));
-
-    final data = container.read(appDataProvider).requireValue;
-    expect(data.txnById('shop')!.savingsEffectMinor, 300000);
-    expect(Savings.reservedMinor(data), 800000);
-    expect(find.text('Earmark transactions'), findsWidgets);
-
-    // Resetting the same selection hands it back to its category.
-    await tester.tap(find.widgetWithText(CheckboxListTile, 'Groceries'));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(TextButton, 'Reset to category default'),
-    );
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(seconds: 6));
-
-    final reset = container.read(appDataProvider).requireValue;
-    expect(reset.txnById('shop')!.savingsEffectMinor, isNull);
-    expect(Savings.reservedMinor(reset), 500000);
-  });
-
-  testWidgets('an old transaction can be earmarked from its editor', (
-    tester,
-  ) async {
-    await pumpApp(tester);
-
-    // A transaction recorded before savings existed.
-    final before = container.read(appDataProvider).requireValue;
-    expect(before.txnById('shop')!.savingsEffectMinor, isNull);
-
-    final row = find.widgetWithText(TxnTile, 'Groceries');
-    await tester.ensureVisible(row);
-    await tester.pumpAndSettle();
-    await tester.tap(row);
-    await tester.pumpAndSettle();
-    expect(find.byType(TxnEditorScreen), findsOneWidget);
-
-    // It opens on the category rule, and says what that resolves to.
-    expect(
-      find.textContaining('This category has no savings rule'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.text('Inherit from category'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Move to savings').last);
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.ancestor(
-        of: find.text('Amount to reserve as savings'),
-        matching: find.byType(TextField),
-      ),
-      '3000',
-    );
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(seconds: 6));
-
-    final after = container.read(appDataProvider).requireValue;
-    expect(after.txnById('shop')!.savingsEffectMinor, 300000);
-    expect(Savings.reservedMinor(after), 800000);
+    expect(find.text('Target Rs 8,000'), findsWidgets);
   });
 }

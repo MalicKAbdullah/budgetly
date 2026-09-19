@@ -221,13 +221,22 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
   Future<void> setSavingsTarget(int minor) =>
       _commit(_data.copyWith(savingsTargetMinor: minor));
 
-  /// Earmarks (or un-earmarks) a whole selection of transactions in **one**
-  /// write, so a bulk pass over old records is a single commit and a single
-  /// undo-by-reselect.
-  Future<void> applySavingsAction(
-    Set<String> txnIds,
-    SavingsBulkAction action,
-  ) => _commit(Savings.applied(_data, txnIds, action));
+  /// Marks money lent out as still the owner's own for savings, or not.
+  ///
+  /// Read at compute time by [Savings.position], so flipping it re-derives
+  /// every figure — including historical ones — without rewriting a record.
+  Future<void> setReceivableCountsAsSavings(String txnId, bool value) =>
+      _commit(
+        _data.copyWith(
+          txns: [
+            for (final t in _data.txns)
+              if (t.id == txnId)
+                t.copyWith(receivableCountsAsSavings: value)
+              else
+                t,
+          ],
+        ),
+      );
 
   // -- Captured notifications ---------------------------------------------
 

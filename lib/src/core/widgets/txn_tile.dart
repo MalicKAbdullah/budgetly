@@ -1,20 +1,17 @@
-import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
-import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/logic/split_text.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 
 /// The transaction row used everywhere a transaction is listed.
 ///
 /// The headline figure is always what the movement cost or earned the owner:
 /// on a split that is their share, with the full bill spelled out underneath.
 /// Settlements are labelled as such and shown in a neutral colour so they are
-/// never read as income or spending. A savings earmark gets its own line for
-/// the same reason: the headline figure is the cash that moved, the earmark is
-/// how much of it is only reserved.
+/// never read as income or spending.
 class TxnTile extends StatelessWidget {
   const TxnTile({required this.txn, required this.data, this.onTap, super.key});
 
@@ -33,7 +30,6 @@ class TxnTile extends StatelessWidget {
         ? txn.amountMinor
         : txn.ownShareMinor;
     final splitLine = SplitText.describe(txn, code);
-    final savingsMinor = Savings.effectFor(txn, data);
     // Who is on it, when it is shared with more than one person — the
     // per-person amounts live on the transaction screen.
     final peopleLine = txn.splits.length > 1
@@ -48,7 +44,7 @@ class TxnTile extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      isThreeLine: splitLine != null || txn.isSettlement || savingsMinor != 0,
+      isThreeLine: splitLine != null || txn.isSettlement,
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.15),
         child: Icon(icon, color: color, size: 20),
@@ -70,21 +66,6 @@ class TxnTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
             ),
-          if (savingsMinor != 0)
-            Text(
-              savingsMinor > 0
-                  ? '${Money.format(savingsMinor, code: code)} reserved as '
-                        'savings'
-                  : '${Money.format(-savingsMinor, code: code)} released from '
-                        'savings',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: text.bodySmall?.copyWith(
-                color: savingsMinor > 0
-                    ? AppColors.success(Theme.of(context).brightness)
-                    : AppColors.warning(Theme.of(context).brightness),
-              ),
-            ),
           if (txn.isSettlement)
             Text(
               SplitText.settlementBadge,
@@ -100,20 +81,12 @@ class TxnTile extends StatelessWidget {
           ),
         ],
       ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            '$sign${Money.format(headline, code: code)}',
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
-          if (splitLine != null && txn.amountMinor != headline)
-            Text(
-              'of ${Money.format(txn.amountMinor, code: code)}',
-              style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-        ],
+      trailing: MoneyTrailing(
+        amount: '$sign${Money.format(headline, code: code)}',
+        secondary: splitLine != null && txn.amountMinor != headline
+            ? 'of ${Money.format(txn.amountMinor, code: code)}'
+            : null,
+        color: color,
       ),
     );
   }

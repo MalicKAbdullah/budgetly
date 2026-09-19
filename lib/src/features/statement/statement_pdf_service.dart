@@ -27,8 +27,8 @@ abstract final class StatementPdfService {
     final dfLong = DateFormat.yMMMMd();
     final dfShort = DateFormat.MMMd();
 
-    final reserved = Savings.reservedMinor(data);
-    final savedInWindow = Savings.savedInRangeMinor(data, start, end);
+    final savings = Savings.position(data);
+    final savingsWindow = Savings.period(data, start, end);
     final income = DashboardFlow.incomeInRange(data, start, end);
     final spent = DashboardFlow.spentInRange(data, start, end);
     final flows = DashboardFlow.byAccount(
@@ -55,17 +55,6 @@ abstract final class StatementPdfService {
     // The figure printed per row is what the movement cost or earned the
     // owner: a split shows their share with the full bill spelled out, and a
     // settlement is labelled so it never reads as income or spending.
-    // What a row says about savings. The money column stays the cash that
-    // really moved, exactly as a settlement row does; the note is what keeps
-    // the reserved part from reading as spending.
-    String savingsNote(Txn t) {
-      final effect = Savings.effectFor(t, data);
-      if (effect == 0) return '';
-      return effect > 0
-          ? ' [${money(effect)} to savings]'
-          : ' [${money(-effect)} from savings]';
-    }
-
     (String, String) txnLabel(Txn t) {
       if (t.isSettlement) {
         final sign = t.type == TxnType.income ? '+' : '-';
@@ -76,11 +65,14 @@ abstract final class StatementPdfService {
       }
       return switch (t.type) {
         TxnType.expense => (
-          '${[catName(t.categoryId), SplitText.describe(t, code)].whereType<String>().join(' — ')}${savingsNote(t)}',
+          [
+            catName(t.categoryId),
+            SplitText.describe(t, code),
+          ].whereType<String>().join(' — '),
           '-${money(t.ownShareMinor)}',
         ),
         TxnType.income => (
-          '${t.note.isEmpty ? 'Income' : t.note}${savingsNote(t)}',
+          t.note.isEmpty ? 'Income' : t.note,
           '+${money(t.amountMinor)}',
         ),
         TxnType.transfer => (
@@ -221,16 +213,27 @@ abstract final class StatementPdfService {
           // money in / money out figures above.
           sectionTitle('Savings'),
           pw.Divider(color: rule, thickness: 0.5),
-          row('Reserved as savings', money(reserved)),
-          if (data.savingsTargetMinor != 0)
+          row('Position', money(savings.positionMinor)),
+          if (savings.hasTarget) ...[
+            row('Target', money(savings.targetMinor)),
             row(
-              'Target',
-              '${money(data.savingsTargetMinor)}  '
-                  '(${Savings.varianceMinor(data) >= 0 ? '+' : '-'}'
-                  '${money(Savings.varianceMinor(data).abs())})',
+              'Free to spend',
+              '${savings.freeToSpendMinor >= 0 ? '+' : '-'}'
+                  '${money(savings.freeToSpendMinor.abs())}',
             ),
-          row('Safe to spend', money(Savings.safeToSpendMinor(data))),
-          row('Saved in this period', money(savedInWindow)),
+          ],
+          if (savings.uncountedReceivablesMinor > 0)
+            row(
+              'Lent out, not counted',
+              money(savings.uncountedReceivablesMinor),
+            ),
+          row('Carried in', money(savingsWindow.carriedInMinor)),
+          row(
+            'Change this period',
+            '${savingsWindow.changeMinor >= 0 ? '+' : '-'}'
+                '${money(savingsWindow.changeMinor.abs())}',
+          ),
+          row('At period end', money(savingsWindow.closingMinor)),
           // Per-account flow
           if (flows.isNotEmpty) ...[
             sectionTitle('By account'),

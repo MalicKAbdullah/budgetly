@@ -148,7 +148,6 @@ class _SettleFormState extends State<_SettleForm> {
               labelText: _receiving ? 'Amount received' : 'Amount paid',
               prefixText: '${widget.code} ',
               errorText: _error,
-              border: const OutlineInputBorder(),
             ),
             onChanged: (_) => setState(() => _error = null),
           ),
@@ -158,7 +157,6 @@ class _SettleFormState extends State<_SettleForm> {
             initialValue: _accountId,
             decoration: InputDecoration(
               labelText: _receiving ? 'Into account' : 'From account',
-              border: const OutlineInputBorder(),
             ),
             items: [
               for (final a in widget.accounts)
@@ -168,10 +166,7 @@ class _SettleFormState extends State<_SettleForm> {
           ),
           const SizedBox(height: AppSpacing.md),
           InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Settled on',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Settled on'),
             child: InkWell(
               onTap: _pickDate,
               child: Padding(

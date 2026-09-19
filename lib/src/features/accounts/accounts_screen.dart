@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/logic/balances.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:uuid/uuid.dart';
 
@@ -82,12 +83,11 @@ class AccountsScreen extends ConsumerWidget {
                     }),
                     title: Text(a.name + (a.archived ? '  (archived)' : '')),
                     subtitle: Text(a.type.label),
-                    trailing: Text(
-                      Money.format(
+                    trailing: MoneyTrailing(
+                      amount: Money.format(
                         Balances.accountBalanceMinor(data!, a.id),
                         code: data.currencyCode,
                       ),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     onTap: () => _edit(context, ref, a),
                     onLongPress: () => _delete(context, ref, a),
@@ -178,19 +178,13 @@ class _AccountFormState extends State<_AccountForm> {
             controller: _name,
             autofocus: true,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Name',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Name'),
           ),
           const SizedBox(height: AppSpacing.md),
           DropdownButtonFormField<AccountType>(
             isExpanded: true,
             initialValue: _type,
-            decoration: const InputDecoration(
-              labelText: 'Type',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Type'),
             items: [
               for (final t in AccountType.values)
                 DropdownMenuItem(value: t, child: Text(t.label)),
@@ -201,10 +195,7 @@ class _AccountFormState extends State<_AccountForm> {
           TextField(
             controller: _opening,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Opening balance',
-              border: OutlineInputBorder(),
-            ),
+            decoration: const InputDecoration(labelText: 'Opening balance'),
           ),
           if (widget.existing != null) ...[
             const SizedBox(height: AppSpacing.sm),
