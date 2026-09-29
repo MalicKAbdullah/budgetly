@@ -19,7 +19,10 @@ class PeopleScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(appDataProvider).valueOrNull ?? const AppData();
     final code = data.currencyCode;
-    final open = PeopleLedger.openPositions(data);
+    // Biggest open balance first: the person most worth chasing (or paying)
+    // is the one the owner opened this screen for.
+    final open = PeopleLedger.openPositions(data)
+      ..sort((a, b) => b.netMinor.abs().compareTo(a.netMinor.abs()));
     final settled = PeopleLedger.positions(
       data,
     ).where((p) => p.isClear).toList();
