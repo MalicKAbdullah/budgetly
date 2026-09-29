@@ -35,9 +35,7 @@ class HomeWidgetService {
       'owed_value': s.owedValue,
       for (var i = 0; i < 3; i++) ...{
         'cat${i}_name': i < s.categories.length ? s.categories[i].name : '',
-        'cat${i}_amount': i < s.categories.length
-            ? s.categories[i].amount
-            : '',
+        'cat${i}_amount': i < s.categories.length ? s.categories[i].amount : '',
       },
     };
     for (final e in values.entries) {
