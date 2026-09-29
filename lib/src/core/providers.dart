@@ -21,6 +21,8 @@ import 'package:budgetly/src/core/storage/vault_file.dart';
 import 'package:budgetly/src/features/backup/backup_codec.dart';
 import 'package:budgetly/src/core/models/captured_notice.dart';
 import 'package:budgetly/src/features/capture/capture_service.dart';
+import 'package:budgetly/src/features/home_widget/home_widget_service.dart';
+import 'package:budgetly/src/features/home_widget/widget_snapshot.dart';
 import 'package:budgetly/src/features/notifications/budget_notifier.dart';
 
 /// Wall clock as a function. Tests override with a fixed time.
@@ -206,4 +208,28 @@ final budgetlyBackupProducerProvider = Provider<BackupProducer>((ref) {
         );
     return Uint8List.fromList(utf8.encode(raw));
   };
+});
+
+final homeWidgetServiceProvider = Provider<HomeWidgetService>(
+  (ref) => HomeWidgetService(ref.watch(secureStorageProvider)),
+);
+
+final widgetShowAmountsProvider = FutureProvider<bool>(
+  (ref) => ref.watch(homeWidgetServiceProvider).readShowAmounts(),
+);
+
+/// Keeps the home-screen widgets in step with the vault: pushes a fresh
+/// snapshot on app start, after every data change and when the privacy
+/// toggle flips. Android only — the widgets are native RemoteViews.
+final homeWidgetSyncProvider = Provider<void>((ref) {
+  if (!Platform.isAndroid) return;
+  final data = ref.watch(appDataProvider).valueOrNull;
+  final showAmounts = ref.watch(widgetShowAmountsProvider).valueOrNull;
+  if (data == null || showAmounts == null) return;
+  final snapshot = WidgetSnapshot.from(
+    data,
+    ref.read(clockProvider)(),
+    showAmounts: showAmounts,
+  );
+  ref.read(homeWidgetServiceProvider).push(snapshot);
 });
