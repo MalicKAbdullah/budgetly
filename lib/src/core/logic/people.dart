@@ -116,6 +116,38 @@ abstract final class PeopleLedger {
   static String displayNameFor(String key, String raw) =>
       raw.trim().isEmpty ? unnamedLabel : raw.trim();
 
+  /// A settlement with one person: cash really moves (so balances change) but
+  /// it is flagged as a settlement, so it counts as neither income nor
+  /// spending. Money coming back to the owner clears "they owe you"; money
+  /// going out clears "you owe them". An empty [note] reads as the default
+  /// wording for its direction.
+  static Txn settlementTxn({
+    required String id,
+    required String person,
+    required String? personId,
+    required DebtKind kind,
+    required int amountMinor,
+    required String accountId,
+    required DateTime date,
+    required DateTime createdAt,
+    String note = '',
+  }) => Txn(
+    id: id,
+    type: kind == DebtKind.owedToYou ? TxnType.income : TxnType.expense,
+    amountMinor: amountMinor,
+    date: date,
+    accountId: accountId,
+    counterparty: person,
+    personId: personId,
+    settlement: true,
+    note: note.trim().isNotEmpty
+        ? note.trim()
+        : kind == DebtKind.owedToYou
+        ? 'Settlement received'
+        : 'Settlement paid',
+    createdAt: createdAt,
+  );
+
   /// Distinct names available for reuse: every registered person, plus any name
   /// still living only on a transaction.
   static List<String> knownNames(AppData data) {

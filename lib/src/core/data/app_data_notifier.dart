@@ -7,6 +7,7 @@ import 'package:budgetly/src/core/logic/captures.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/logic/recurring.dart';
 import 'package:budgetly/src/core/logic/savings.dart';
+import 'package:budgetly/src/core/logic/settle_match.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/captured_notice.dart';
 import 'package:budgetly/src/core/models/category.dart';
@@ -184,10 +185,8 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
     _data.copyWith(txns: _data.txns.where((t) => t.id != id).toList()),
   );
 
-  /// Records a settlement with one person: cash really moves (so balances
-  /// change) but it is flagged as a settlement, so it counts as neither income
-  /// nor spending. It clears that person's oldest open debts first — see
-  /// [PeopleLedger] for the allocation rule.
+  /// Records a settlement with one person. It clears that person's oldest open
+  /// debts first — see [PeopleLedger] for the allocation rule.
   Future<void> settleWithPerson({
     required String person,
     required String? personId,
@@ -196,24 +195,28 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
     required String accountId,
     required DateTime date,
   }) {
-    final txn = Txn(
+    final txn = PeopleLedger.settlementTxn(
       id: _uuid.v4(),
-      // Money coming back to the owner clears "they owe you"; money going out
-      // clears "you owe them".
-      type: kind == DebtKind.owedToYou ? TxnType.income : TxnType.expense,
-      amountMinor: amountMinor,
-      date: date,
-      accountId: accountId,
-      counterparty: person,
+      person: person,
       personId: personId,
-      settlement: true,
-      note: kind == DebtKind.owedToYou
-          ? 'Settlement received'
-          : 'Settlement paid',
+      kind: kind,
+      amountMinor: amountMinor,
+      accountId: accountId,
+      date: date,
       createdAt: ref.read(clockProvider)(),
     );
     return _commit(_data.copyWith(txns: [..._data.txns, txn]));
   }
+
+  /// Turns a saved income or expense into a settlement with [s] in place.
+  Future<void> linkTxnToBalance(Txn txn, SettleSuggestion s) => _commit(
+    _data.copyWith(
+      txns: [
+        for (final t in _data.txns)
+          if (t.id == txn.id) SettleMatch.relink(t, s) else t,
+      ],
+    ),
+  );
 
   // -- Savings ------------------------------------------------------------
 
@@ -250,18 +253,22 @@ final class AppDataNotifier extends AsyncNotifier<AppData> {
     await _clearNativeQueue(drained);
   }
 
-  /// Records a reviewed notice as a real transaction, in one write.
-  Future<void> addTxnForNotice(Txn txn, String noticeId) => _commit(
-    _data.copyWith(
-      txns: [..._data.txns, txn],
-      capturedNotices: CaptureIngest.withStatus(
-        _data.capturedNotices,
-        noticeId,
-        CaptureStatus.added,
-        txnId: txn.id,
+  /// Records a reviewed notice as real transactions, in one write. The notice
+  /// links to the first — the one a settlement split leads with.
+  Future<void> addTxnsForNotice(List<Txn> txns, String noticeId) {
+    assert(txns.isNotEmpty, 'a notice always becomes at least one txn');
+    return _commit(
+      _data.copyWith(
+        txns: [..._data.txns, ...txns],
+        capturedNotices: CaptureIngest.withStatus(
+          _data.capturedNotices,
+          noticeId,
+          CaptureStatus.added,
+          txnId: txns.first.id,
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   /// Keeps the notice in history, marked as not wanted.
   Future<void> dismissNotice(String noticeId) => _commit(

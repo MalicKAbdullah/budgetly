@@ -301,6 +301,8 @@ class _TxnEditorScreenState extends ConsumerState<TxnEditorScreen> {
                 if (linkCard != null) ...[
                   const SizedBox(height: AppSpacing.md),
                   linkCard,
+                ] else if (data != null && _existing != null) ...[
+                  TxnSettleLinkSection(data: data, txn: _existing!),
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 FilledButton(onPressed: _save, child: const Text('Save')),

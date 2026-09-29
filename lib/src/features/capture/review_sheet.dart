@@ -2,6 +2,9 @@ import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:budgetly/src/core/data/app_data.dart';
+import 'package:budgetly/src/core/logic/people.dart';
+import 'package:budgetly/src/core/logic/settle_match.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/captured_notice.dart';
 import 'package:budgetly/src/core/models/category.dart';
@@ -11,6 +14,7 @@ import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/features/capture/review_fields.dart';
 import 'package:budgetly/src/features/capture/sms_parser.dart';
 import 'package:budgetly/src/features/capture/transfer_hint.dart';
+import 'package:budgetly/src/features/people/settle_suggestions.dart';
 import 'package:uuid/uuid.dart';
 
 /// Opens the review sheet for one captured notification. A modal sheet, never
@@ -45,6 +49,9 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
   String? _toAccountId;
   String? _categoryId;
 
+  /// The person this money squares up with, chosen from the suggestions.
+  SettleSuggestion? _settle;
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +81,21 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
   }
 
   bool get _isTransfer => _mode == CaptureMode.transfer;
+
+  List<SettleSuggestion> _suggestions(AppData data) => SettleMatch.suggest(
+    positions: PeopleLedger.openPositions(data),
+    type: _mode.txnType,
+    amountMinor: Money.parse(_amount.text),
+    text: widget.notice.rawText,
+  );
+
+  /// True when the chosen settlement leaves nothing over — a category would
+  /// then describe spending that is not there.
+  bool get _settlesWhole {
+    final s = _settle;
+    final minor = Money.parse(_amount.text);
+    return s != null && minor != null && minor <= s.openMinor;
+  }
 
   /// Picks the accounts the two ends of a withdrawal usually mean: money out
   /// of the bank/card the alert came from, into wherever cash is kept.
@@ -120,13 +142,27 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
       note: _note.text.trim(),
       createdAt: ref.read(clockProvider)(),
     );
+    final settle = _settle;
+    final txns = settle == null
+        ? [txn]
+        : SettleMatch.apply(
+            base: txn,
+            s: settle,
+            newId: () => const Uuid().v4(),
+          );
     await ref
         .read(appDataProvider.notifier)
-        .addTxnForNotice(txn, widget.notice.id);
+        .addTxnsForNotice(txns, widget.notice.id);
     navigator.pop();
     messenger.showSnackBar(
       SnackBar(
-        content: Text(_isTransfer ? 'Transfer added.' : 'Transaction added.'),
+        content: Text(
+          settle != null
+              ? 'Settlement with ${settle.position.name} recorded.'
+              : _isTransfer
+              ? 'Transfer added.'
+              : 'Transaction added.',
+        ),
       ),
     );
   }
@@ -162,6 +198,9 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
     final accounts = data?.activeAccounts ?? const <Account>[];
     final categories = data?.categories ?? const <Category>[];
     final code = data?.currencyCode ?? 'PKR';
+    final suggestions = data == null
+        ? const <SettleSuggestion>[]
+        : _suggestions(data);
     _fillDefaults(accounts);
     final sameAccount =
         _isTransfer && _toAccountId != null && _toAccountId == _accountId;
@@ -185,7 +224,12 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
             const SizedBox(height: AppSpacing.md),
             CaptureModeSelector(
               mode: _mode,
-              onChanged: (m) => setState(() => _mode = m),
+              // A settlement only makes sense in the direction it was chosen
+              // for, so a new mode starts from no person.
+              onChanged: (m) => setState(() {
+                _mode = m;
+                _settle = null;
+              }),
             ),
             if (_transferSuggested) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -219,7 +263,17 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
             ),
             const SizedBox(height: AppSpacing.md),
             ..._accountFields(accounts, sameAccount),
-            if (_mode == CaptureMode.expense) ...[
+            if (suggestions.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.lg),
+              SettleSuggestionPicker(
+                suggestions: suggestions,
+                selectedKey: _settle?.position.key,
+                amountMinor: Money.parse(_amount.text),
+                code: code,
+                onChanged: (s) => setState(() => _settle = s),
+              ),
+            ],
+            if (_mode == CaptureMode.expense && !_settlesWhole) ...[
               const SizedBox(height: AppSpacing.md),
               CategoryPicker(
                 categories: categories,
@@ -243,7 +297,13 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
             const SizedBox(height: AppSpacing.lg),
             FilledButton(
               onPressed: _canAdd(accounts) ? _add : null,
-              child: Text(_isTransfer ? 'Add transfer' : 'Add transaction'),
+              child: Text(
+                _settle != null
+                    ? 'Record settlement'
+                    : _isTransfer
+                    ? 'Add transfer'
+                    : 'Add transaction',
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(onPressed: _dismiss, child: const Text('Dismiss')),
