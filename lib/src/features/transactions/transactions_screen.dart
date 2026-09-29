@@ -3,6 +3,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/money.dart';
@@ -130,18 +131,115 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         Expanded(
           child: filtered.isEmpty
               ? _NoMatches(data: data, filters: filters, onClearAll: _clearAll)
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 96),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) => TxnTile(
-                    txn: filtered[i],
-                    data: data,
-                    onTap: () => context.push('/txn/${filtered[i].id}'),
-                  ),
-                ),
+              : _DayGroupedList(txns: filtered, data: data, code: code),
         ),
       ],
+    );
+  }
+}
+
+/// The filtered list split into days, newest first, each under a header that
+/// stays pinned while its day scrolls by and shows what that day cost.
+class _DayGroupedList extends StatelessWidget {
+  const _DayGroupedList({
+    required this.txns,
+    required this.data,
+    required this.code,
+  });
+
+  /// Already sorted newest first by [TxnFilters.apply].
+  final List<Txn> txns;
+  final AppData data;
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final days = <(DateTime, List<Txn>)>[];
+    for (final t in txns) {
+      final day = DateTime(t.date.year, t.date.month, t.date.day);
+      if (days.isEmpty || days.last.$1 != day) days.add((day, []));
+      days.last.$2.add(t);
+    }
+    return CustomScrollView(
+      slivers: [
+        for (final (day, items) in days)
+          SliverMainAxisGroup(
+            slivers: [
+              PinnedHeaderSliver(
+                child: _DayHeader(day: day, txns: items, code: code),
+              ),
+              SliverList.separated(
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (_, i) => TxnTile(
+                  txn: items[i],
+                  data: data,
+                  onTap: () => context.push('/txn/${items[i].id}'),
+                ),
+              ),
+            ],
+          ),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 96)),
+      ],
+    );
+  }
+}
+
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({required this.day, required this.txns, required this.code});
+
+  final DateTime day;
+  final List<Txn> txns;
+  final String code;
+
+  String _label(DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    return day.year == now.year
+        ? DateFormat('EEE, d MMM').format(day)
+        : DateFormat('EEE, d MMM y').format(day);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    // Same "what did this cost me" rule as the totals line above the list.
+    final spent = txns
+        .where((t) => t.type == TxnType.expense && !t.isSettlement)
+        .fold(0, (a, t) => a + t.ownShareMinor);
+    return Container(
+      color: theme.colorScheme.surfaceContainerLow,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs + 2,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _label(DateTime.now()),
+              style: style?.copyWith(fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (spent > 0) ...[
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: ValueText(
+                '−${Money.format(spent, code: code)}',
+                style: style,
+                alignment: AlignmentDirectional.centerEnd,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
