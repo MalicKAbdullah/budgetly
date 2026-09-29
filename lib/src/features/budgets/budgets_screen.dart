@@ -5,6 +5,7 @@ import 'package:budgetly/src/core/logic/budgets.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/widgets/money_text.dart';
+import 'package:budgetly/src/core/widgets/progress_bar.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:uuid/uuid.dart';
 
@@ -75,7 +76,7 @@ class BudgetsScreen extends ConsumerWidget {
                       subtitle: c.hasBudget
                           ? Padding(
                               padding: const EdgeInsets.only(top: 6),
-                              child: LinearProgressIndicator(
+                              child: ProgressBar(
                                 value: c.progress,
                                 color: c.overBudget ? warn : null,
                               ),

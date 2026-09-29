@@ -6,6 +6,7 @@ import 'package:budgetly/src/core/logic/balances.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
 import 'package:budgetly/src/core/logic/flow.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/progress_bar.dart';
 
 /// Spent / income / net for the selected window. Both figures already exclude
 /// settlements, so passing money through never flatters the net.
@@ -24,38 +25,75 @@ class SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final net = incomeMinor - spentMinor;
+    final warn = AppColors.warning(Theme.of(context).brightness);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: StatTile(
-                label: 'Spent',
-                value: Money.format(spentMinor, code: code),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: StatTile(
-                label: 'Income',
-                value: Money.format(incomeMinor, code: code),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: StatTile(
+            // Net leads: it is the one figure that says whether the period is
+            // going well; spent and income are its explanation.
+            _CountUp(
+              minor: net,
+              builder: (v) => StatTile(
                 label: 'Net',
-                value: Money.format(net, code: code),
-                valueColor: net < 0
-                    ? AppColors.warning(Theme.of(context).brightness)
-                    : null,
+                value: Money.format(v, code: code),
+                valueColor: net < 0 ? warn : null,
+                size: StatTileSize.hero,
               ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _CountUp(
+                    minor: spentMinor,
+                    builder: (v) => StatTile(
+                      label: 'Spent',
+                      icon: Icons.south_east,
+                      value: Money.format(v, code: code),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _CountUp(
+                    minor: incomeMinor,
+                    builder: (v) => StatTile(
+                      label: 'Income',
+                      icon: Icons.north_east,
+                      value: Money.format(v, code: code),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Glides a figure to its new value when the period changes, so the owner
+/// sees the direction of the change. The first build shows the value as-is:
+/// counting up from zero on every app open would be noise, not information.
+class _CountUp extends StatelessWidget {
+  const _CountUp({required this.minor, required this.builder});
+
+  final int minor;
+  final Widget Function(int minor) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<int>(
+      tween: IntTween(begin: minor, end: minor),
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+      // Whole units while in flight, so passing cents don't flicker.
+      builder: (_, v, _) => builder(v == minor ? v : v ~/ 100 * 100),
     );
   }
 }
@@ -148,14 +186,9 @@ class CategoryBreakdown extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.xs),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: max == 0 ? 0 : c.value / max,
-                            minHeight: 6,
-                            backgroundColor: scheme.surfaceContainerHighest,
-                            color: scheme.primary,
-                          ),
+                        ProgressBar(
+                          value: max == 0 ? 0 : c.value / max,
+                          color: scheme.primary,
                         ),
                       ],
                     ),
@@ -355,16 +388,9 @@ class BudgetRow extends StatelessWidget {
           ),
           if (spend.hasBudget) ...[
             const SizedBox(height: AppSpacing.sm),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: spend.progress,
-                minHeight: 6,
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
-                color: spend.overBudget ? warn : null,
-              ),
+            ProgressBar(
+              value: spend.progress,
+              color: spend.overBudget ? warn : null,
             ),
           ],
         ],
