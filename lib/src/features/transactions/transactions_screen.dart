@@ -74,9 +74,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
         data: (data) => data.txns.isEmpty
-            ? const Center(
-                child: Text('No transactions yet — add one with the + button.'),
-              )
+            ? _NoTransactions(hasAccounts: hasAccounts)
             : _list(data),
       ),
     );
@@ -293,6 +291,59 @@ class _TotalsLine extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// First run: nothing recorded yet. Points at the one step that unblocks the
+/// screen — an account if there is none (the editor needs one), else a first
+/// transaction.
+class _NoTransactions extends StatelessWidget {
+  const _NoTransactions({required this.hasAccounts});
+
+  final bool hasAccounts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 48,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'No transactions yet',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              hasAccounts
+                  ? 'Everything you spend and receive will be listed here, '
+                        'grouped by day.'
+                  : 'Add an account first — every transaction belongs to one.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            hasAccounts
+                ? FilledButton.icon(
+                    onPressed: () => context.push('/txn/new'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add transaction'),
+                  )
+                : FilledButton.icon(
+                    onPressed: () => context.push('/accounts'),
+                    icon: const Icon(Icons.account_balance_wallet_outlined),
+                    label: const Text('Add account'),
+                  ),
+          ],
+        ),
       ),
     );
   }
