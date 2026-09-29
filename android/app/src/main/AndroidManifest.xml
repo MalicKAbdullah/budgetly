@@ -48,6 +48,29 @@
             </intent-filter>
         </service>
 
+        <receiver
+            android:name=".LeftWidgetProvider"
+            android:label="Left to spend"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_left_info" />
+        </receiver>
+        <receiver
+            android:name=".OverviewWidgetProvider"
+            android:label="Month overview"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_overview_info" />
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

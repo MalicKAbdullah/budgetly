@@ -71,6 +71,8 @@ class SettingsScreen extends ConsumerWidget {
           Text('Security', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
           AppLockSettings(controller: ref.watch(lockControllerProvider)),
+          const SizedBox(height: AppSpacing.sm),
+          const _WidgetAmountsTile(),
           const SizedBox(height: AppSpacing.md),
           Text('Updates', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
@@ -366,6 +368,31 @@ class _UpdateCheckTileState extends ConsumerState<_UpdateCheckTile> {
             onTap: _checking ? null : _checkNow,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Privacy switch for the home-screen widgets: off shows a masked value so a
+/// glance at the home screen never reveals amounts.
+class _WidgetAmountsTile extends ConsumerWidget {
+  const _WidgetAmountsTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!Platform.isAndroid) return const SizedBox.shrink();
+    final show = ref.watch(widgetShowAmountsProvider).valueOrNull;
+    if (show == null) return const SizedBox.shrink();
+    return Card(
+      child: SwitchListTile(
+        secondary: const Icon(Icons.widgets_outlined),
+        title: const Text('Show amounts on home-screen widget'),
+        subtitle: const Text('Off shows •••• instead of your figures'),
+        value: show,
+        onChanged: (v) async {
+          await ref.read(homeWidgetServiceProvider).writeShowAmounts(v);
+          ref.invalidate(widgetShowAmountsProvider);
+        },
       ),
     );
   }

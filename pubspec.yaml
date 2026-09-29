@@ -87,6 +87,7 @@ dependencies:
       ref: 9571738a9464630df73f969b7cb384956a7f4fd5
 
   cupertino_icons: ^1.0.8
+  home_widget: ^0.10.0
 
 dev_dependencies:
   flutter_test:
