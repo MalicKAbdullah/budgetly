@@ -6,6 +6,7 @@ import 'package:budgetly/src/core/logic/balances.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
 import 'package:budgetly/src/core/logic/flow.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/progress_bar.dart';
 
 /// Spent / income / net for the selected window. Both figures already exclude
 /// settlements, so passing money through never flatters the net.
@@ -185,14 +186,9 @@ class CategoryBreakdown extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.xs),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: max == 0 ? 0 : c.value / max,
-                            minHeight: 6,
-                            backgroundColor: scheme.surfaceContainerHighest,
-                            color: scheme.primary,
-                          ),
+                        ProgressBar(
+                          value: max == 0 ? 0 : c.value / max,
+                          color: scheme.primary,
                         ),
                       ],
                     ),
@@ -392,16 +388,9 @@ class BudgetRow extends StatelessWidget {
           ),
           if (spend.hasBudget) ...[
             const SizedBox(height: AppSpacing.sm),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: spend.progress,
-                minHeight: 6,
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
-                color: spend.overBudget ? warn : null,
-              ),
+            ProgressBar(
+              value: spend.progress,
+              color: spend.overBudget ? warn : null,
             ),
           ],
         ],
