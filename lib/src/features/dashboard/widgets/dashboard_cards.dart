@@ -5,11 +5,14 @@ import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/balances.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
 import 'package:budgetly/src/core/logic/flow.dart';
+import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/category_visual.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 import 'package:budgetly/src/core/widgets/progress_bar.dart';
 
-/// Spent / income / net for the selected window. Both figures already exclude
-/// settlements, so passing money through never flatters the net.
+/// Net, spent and income for the selected window. Both figures already
+/// exclude settlements, so passing money through never flatters the net.
 class SummaryCard extends StatelessWidget {
   const SummaryCard({
     required this.spentMinor,
@@ -24,54 +27,65 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
     final net = incomeMinor - spentMinor;
-    final warn = AppColors.warning(Theme.of(context).brightness);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Net leads: it is the one figure that says whether the period is
-            // going well; spent and income are its explanation.
-            _CountUp(
-              minor: net,
-              builder: (v) => StatTile(
-                label: 'Net',
-                value: Money.format(v, code: code),
-                valueColor: net < 0 ? warn : null,
-                size: StatTileSize.hero,
+    return VaultCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Net leads: it is the one figure that says whether the period is
+          // going well; spent and income are its explanation.
+          Text(
+            'Net',
+            style: AppTextStyles.label.copyWith(color: c.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _CountUp(
+            minor: net,
+            builder: (v) => AmountText(
+              v,
+              code: code,
+              style: AppTextStyles.numberLarge,
+              tone: MoneyTone.signed,
+              showPlus: true,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (incomeMinor > 0 || spentMinor > 0) ...[
+            SizedBox(
+              width: double.infinity,
+              child: SegmentedBar(
+                values: [
+                  spentMinor.toDouble(),
+                  (incomeMinor - spentMinor).clamp(0, incomeMinor).toDouble(),
+                ],
+                colors: [c.accent, c.surfaceAlt],
+                height: 8,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _CountUp(
-                    minor: spentMinor,
-                    builder: (v) => StatTile(
-                      label: 'Spent',
-                      icon: Icons.south_east,
-                      value: Money.format(v, code: code),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _CountUp(
-                    minor: incomeMinor,
-                    builder: (v) => StatTile(
-                      label: 'Income',
-                      icon: Icons.north_east,
-                      value: Money.format(v, code: code),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
-        ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: StatTile(
+                  label: 'Spent',
+                  dotColor: c.accent,
+                  value: Money.format(spentMinor, code: code),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: StatTile(
+                  label: 'Income',
+                  dotColor: c.border,
+                  value: Money.format(incomeMinor, code: code),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -90,18 +104,19 @@ class _CountUp extends StatelessWidget {
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<int>(
       tween: IntTween(begin: minor, end: minor),
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeOutCubic,
+      duration: AppMotion.slow,
+      curve: AppMotion.standard,
       // Whole units while in flight, so passing cents don't flicker.
       builder: (_, v, _) => builder(v == minor ? v : v ~/ 100 * 100),
     );
   }
 }
 
-/// Where the money went: the top spending categories as ranked bars.
+/// Where the money went: the top spending categories as a donut with a
+/// ranked legend.
 ///
-/// Every row is tappable: [onSelect] receives the category id of the row
-/// (`''` for uncategorized), which the dashboard turns into the shared
+/// Every legend row is tappable: [onSelect] receives the category id of the
+/// row (`''` for uncategorized), which the dashboard turns into the shared
 /// category filter plus a jump to the activity list.
 class CategoryBreakdown extends StatelessWidget {
   const CategoryBreakdown({
@@ -125,226 +140,245 @@ class CategoryBreakdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final sorted = DashboardFlow.spendByCategory(data, start, end);
     if (sorted.isEmpty) return const SizedBox.shrink();
+    final c = SuiteColors.of(context);
+    final total = sorted.fold(0, (s, e) => s + e.value);
+    if (total == 0) return const SizedBox.shrink();
     final top = sorted.take(5).toList();
-    final max = top.first.value;
-    final scheme = Theme.of(context).colorScheme;
+    final rest = total - top.fold(0, (s, e) => s + e.value);
     String nameFor(String id) => id.isEmpty
         ? 'Uncategorized'
         : (data.categoryById(id)?.name ?? 'Uncategorized');
+    final colors = [
+      for (var i = 0; i < top.length; i++) c.chart[i % c.chart.length],
+    ];
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Top categories · tap one to see its transactions',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              for (final c in top)
-                InkWell(
-                  onTap: () => onSelect(c.key),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.sm,
-                      horizontal: 4,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                nameFor(c.key),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              flex: 2,
-                              child: ValueText(
-                                Money.format(c.value, code: code),
-                                style: AppTextStyles.numberSmall,
-                                alignment: AlignmentDirectional.centerEnd,
-                              ),
-                            ),
-                            Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        ProgressBar(
-                          value: max == 0 ? 0 : c.value / max,
-                          color: scheme.primary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Real cash in and out of each account over the selected window —
-/// settlements included, because the cash genuinely moved.
-class AccountFlowCard extends StatelessWidget {
-  const AccountFlowCard({required this.flows, required this.code, super.key});
-  final List<AccountFlow> flows;
-  final String code;
-
-  @override
-  Widget build(BuildContext context) {
-    if (flows.isEmpty) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
-    final inColor = scheme.primary;
-    final outColor = AppColors.warning(Theme.of(context).brightness);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Money in & out',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              for (final f in flows)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                  child: Row(
+    return VaultCard(
+      padding: const EdgeInsets.fromLTRB(0, AppSpacing.mdl, 0, AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.mdl),
+            child: Row(
+              children: [
+                DonutChart(
+                  size: 112,
+                  thickness: 14,
+                  segments: [
+                    for (var i = 0; i < top.length; i++)
+                      DonutSegment(
+                        value: top[i].value.toDouble(),
+                        color: colors[i],
+                      ),
+                    if (rest > 0)
+                      DonutSegment(value: rest.toDouble(), color: c.border),
+                  ],
+                  center: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        flex: 4,
-                        child: Text(
-                          f.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        '${(top.first.value * 100 / total).round()}%',
+                        style: AppTextStyles.numberMedium.copyWith(
+                          color: c.textPrimary,
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        flex: 3,
-                        child: ValueText(
-                          '+${Money.format(f.inMinor, code: code)}',
-                          style: AppTextStyles.numberSmall,
-                          color: inColor,
-                          alignment: AlignmentDirectional.centerEnd,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        flex: 3,
-                        child: ValueText(
-                          '-${Money.format(f.outMinor, code: code)}',
-                          style: AppTextStyles.numberSmall,
-                          color: outColor,
-                          alignment: AlignmentDirectional.centerEnd,
+                      Text(
+                        'top',
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textTertiary,
                         ),
                       ),
                     ],
                   ),
                 ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class NetWorthCard extends StatelessWidget {
-  const NetWorthCard({required this.data, required this.code, super.key});
-  final AppData data;
-  final String code;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
+                const SizedBox(width: AppSpacing.mdl),
                 Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Total balance',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  flex: 4,
-                  child: ValueText(
-                    Money.format(Balances.netWorthMinor(data), code: code),
-                    style: AppTextStyles.number,
-                    alignment: AlignmentDirectional.centerEnd,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Spent',
+                        style: AppTextStyles.label.copyWith(
+                          color: c.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      AmountText(
+                        total,
+                        code: code,
+                        style: AppTextStyles.numberMedium,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        sorted.length == 1
+                            ? 'in 1 category'
+                            : 'across ${sorted.length} categories',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: c.textTertiary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const Divider(height: AppSpacing.lg),
-            for (final a in data.activeAccounts)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        a.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      flex: 4,
-                      child: ValueText(
-                        Money.format(
-                          Balances.accountBalanceMinor(data, a.id),
-                          code: code,
+          ),
+          const SizedBox(height: AppSpacing.smd),
+          for (var i = 0; i < top.length; i++)
+            InkWell(
+              onTap: () => onSelect(top[i].key),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.mdl,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: colors[i],
+                          shape: BoxShape.circle,
                         ),
-                        style: AppTextStyles.numberSmall,
-                        alignment: AlignmentDirectional.centerEnd,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: AppSpacing.smd),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          nameFor(top[i].key),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: c.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        flex: 2,
+                        child: ValueText(
+                          Money.format(top[i].value, code: code),
+                          style: AppTextStyles.numberSmall,
+                          alignment: AlignmentDirectional.centerEnd,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 44,
+                        child: Text(
+                          '${(top[i].value * 100 / total).round()}%',
+                          textAlign: TextAlign.end,
+                          style: AppTextStyles.numberSmall.copyWith(
+                            color: c.textTertiary,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: c.textTertiary,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 }
 
+/// Every account's balance under the total, with the real cash in and out of
+/// each over the selected window — settlements included, because the cash
+/// genuinely moved.
+class AccountsCard extends StatelessWidget {
+  const AccountsCard({
+    required this.data,
+    required this.flows,
+    required this.code,
+    this.onTap,
+    super.key,
+  });
+
+  final AppData data;
+  final List<AccountFlow> flows;
+  final String code;
+  final VoidCallback? onTap;
+
+  static IconData iconFor(AccountType type) => switch (type) {
+    AccountType.cash => Icons.payments_outlined,
+    AccountType.bank => Icons.account_balance_outlined,
+    AccountType.wallet => Icons.account_balance_wallet_outlined,
+    AccountType.card => Icons.credit_card_rounded,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    final flowById = {for (final f in flows) f.accountId: f};
+    return VaultCard(
+      padding: EdgeInsets.zero,
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.mdl,
+              AppSpacing.mdl,
+              AppSpacing.mdl,
+              AppSpacing.md,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total balance',
+                  style: AppTextStyles.label.copyWith(color: c.textSecondary),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                AmountText(
+                  Balances.netWorthMinor(data),
+                  code: code,
+                  style: AppTextStyles.numberLarge,
+                ),
+              ],
+            ),
+          ),
+          for (final a in data.activeAccounts) ...[
+            Divider(height: 1, indent: 72, color: c.hairline),
+            AppListRow(
+              leading: IconBadge(icon: iconFor(a.type)),
+              title: a.name,
+              subtitle: _flowLine(flowById[a.id]),
+              trailing: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 150),
+                child: AmountText(
+                  Balances.accountBalanceMinor(data, a.id),
+                  code: code,
+                  style: AppTextStyles.number,
+                  alignment: AlignmentDirectional.centerEnd,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _flowLine(AccountFlow? f) {
+    if (f == null || (f.inMinor == 0 && f.outMinor == 0)) return 'No movement';
+    return [
+      if (f.inMinor > 0) 'In ${Money.format(f.inMinor, code: code)}',
+      if (f.outMinor > 0) 'Out ${Money.format(f.outMinor, code: code)}',
+    ].join(' · ');
+  }
+}
+
+/// One category's month: spent against its budget, with what is left.
 class BudgetRow extends StatelessWidget {
   const BudgetRow({required this.spend, required this.code, super.key});
   final CategorySpend spend;
@@ -352,47 +386,77 @@ class BudgetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final warn = AppColors.warning(Theme.of(context).brightness);
+    final c = SuiteColors.of(context);
+    final left = spend.remainingMinor;
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
+        vertical: AppSpacing.smd + 2,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Text(
-                  spend.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                flex: 4,
-                child: ValueText(
-                  spend.hasBudget
-                      ? '${Money.format(spend.spentMinor, code: code)} / '
-                            '${Money.format(spend.budgetMinor, code: code)}'
-                      : Money.format(spend.spentMinor, code: code),
-                  style: AppTextStyles.numberSmall,
-                  color: spend.overBudget ? warn : null,
-                  alignment: AlignmentDirectional.centerEnd,
-                ),
-              ),
-            ],
+          IconBadge(
+            icon: CategoryVisual.icon(spend.name),
+            color: CategoryVisual.color(context, spend.name),
           ),
-          if (spend.hasBudget) ...[
-            const SizedBox(height: AppSpacing.sm),
-            ProgressBar(
-              value: spend.progress,
-              color: spend.overBudget ? warn : null,
+          const SizedBox(width: AppSpacing.smd + 2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        spend.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.body.copyWith(
+                          color: c.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      flex: 3,
+                      child: ValueText(
+                        Money.format(spend.spentMinor, code: code),
+                        style: AppTextStyles.number,
+                        alignment: AlignmentDirectional.centerEnd,
+                      ),
+                    ),
+                  ],
+                ),
+                if (spend.hasBudget) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  ProgressBar(value: spend.spentMinor / spend.budgetMinor),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    spend.overBudget
+                        ? '${Money.format(-left, code: code)} over · '
+                              'budget ${Money.format(spend.budgetMinor, code: code)}'
+                        : '${Money.format(left, code: code)} left of '
+                              '${Money.format(spend.budgetMinor, code: code)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: spend.overBudget ? c.negative : c.textSecondary,
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'No budget set',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: c.textTertiary,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );

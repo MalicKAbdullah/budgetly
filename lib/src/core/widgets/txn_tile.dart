@@ -110,7 +110,7 @@ class TxnTile extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.smd),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 140),
+                  constraints: const BoxConstraints(maxWidth: 124),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,

@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:core_update/core_update.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +18,7 @@ class UpdateCard extends ConsumerWidget {
     final dismissed = ref.watch(updateDismissedProvider);
     if (info == null || dismissed) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: AppSpacing.smd),
       child: UpdateBanner(
         info: info,
         onUpdate: () => ref.read(updateServiceProvider).openDownload(info),
@@ -38,21 +39,14 @@ class CaptureBanner extends ConsumerWidget {
     final n = ref.watch(pendingNoticesProvider).length;
     if (n == 0) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Card(
-        child: ListTile(
-          leading: const Icon(Icons.mark_email_unread_outlined),
-          title: Text(
-            n == 1
-                ? '1 captured transaction to review'
-                : '$n captured transactions to review',
-          ),
-          subtitle: const Text(
-            'From your bank/wallet alerts — accept or discard',
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push('/capture'),
-        ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.smd),
+      child: AppBanner(
+        icon: Icons.mark_email_unread_outlined,
+        title: n == 1
+            ? '1 captured transaction to review'
+            : '$n captured transactions to review',
+        message: 'From your bank and wallet alerts. Accept or discard.',
+        onTap: () => context.push('/capture'),
       ),
     );
   }
