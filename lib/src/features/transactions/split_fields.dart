@@ -1,9 +1,11 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/models/txn_split.dart';
 import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 
 /// One person on the split being edited: who, and how much of the split total
 /// is theirs. The controller lives in the editor so the text survives rebuilds.
@@ -156,31 +158,27 @@ class SplitFields extends StatelessWidget {
 
   /// Their share of what the owner paid, or the owner's share someone else
   /// fronted — the same arithmetic the model uses.
-  String get _yourShare {
+  int get _yourShareMinor {
     final owed = _receivable ? _shareMinor : 0;
     final owe = _receivable ? 0 : _shareMinor;
-    final share = (paidMinor - owed + owe).clamp(0, 1 << 62);
-    return Money.format(share, code: code);
+    return (paidMinor - owed + owe).clamp(0, 1 << 62);
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
+    final c = SuiteColors.of(context);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SegmentedButton<DebtKind>(
+        AppSegmentedControl<DebtKind>(
+          height: 48,
           segments: const [
-            ButtonSegment(
-              value: DebtKind.owedToYou,
-              label: Text('They owe me'),
-            ),
-            ButtonSegment(value: DebtKind.youOwe, label: Text('I owe them')),
+            AppSegment(value: DebtKind.owedToYou, label: 'They owe me'),
+            AppSegment(value: DebtKind.youOwe, label: 'I owe them'),
           ],
-          selected: {draft.kind},
-          onSelectionChanged: (s) {
-            draft.kind = s.first;
+          selected: draft.kind,
+          onChanged: (k) {
+            draft.kind = k;
             onChanged();
           },
         ),
@@ -188,11 +186,12 @@ class SplitFields extends StatelessWidget {
         TextField(
           controller: draft.share,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: AppTextStyles.number.copyWith(color: c.textPrimary),
           decoration: InputDecoration(
             labelText: _receivable
                 ? 'Amount owed back to you'
                 : 'Amount you owe',
-            prefixText: '$code ',
+            prefixText: '${Money.symbol(code).trim()} ',
             helperMaxLines: 2,
             helperText: _receivable
                 ? 'The part of what you paid that comes back to you'
@@ -200,14 +199,56 @@ class SplitFields extends StatelessWidget {
           ),
           onChanged: (_) => onChanged(),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          'Your share: $_yourShare — this is what counts as your spending.',
-          style: text.bodySmall?.copyWith(color: scheme.onSurface),
-        ),
         const SizedBox(height: AppSpacing.md),
-        Text('Who owes it', style: text.titleSmall),
-        const SizedBox(height: AppSpacing.xs),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.smd,
+          ),
+          decoration: BoxDecoration(
+            color: c.surfaceAlt,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your share',
+                      style: AppTextStyles.labelStrong.copyWith(
+                        color: c.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'This is what counts as your spending.',
+                      style: AppTextStyles.caption.copyWith(
+                        color: c.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.smd),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: AmountText(
+                  _yourShareMinor,
+                  code: code,
+                  style: AppTextStyles.number,
+                  alignment: AlignmentDirectional.centerEnd,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'Who owes it',
+          style: AppTextStyles.h4.copyWith(color: c.textPrimary),
+        ),
+        const SizedBox(height: AppSpacing.smd),
         for (var i = 0; i < rows.length; i++)
           _PersonAmountRow(
             name: nameFor(rows[i].personId),
@@ -219,28 +260,33 @@ class SplitFields extends StatelessWidget {
             },
             onChanged: onChanged,
           ),
-        const SizedBox(height: AppSpacing.xs),
         Wrap(
           spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.xs,
+          runSpacing: AppSpacing.sm,
           children: [
-            OutlinedButton.icon(
+            VaultButton(
+              label: 'Add person',
+              icon: Icons.person_add_alt_rounded,
+              variant: VaultButtonVariant.secondary,
+              compact: true,
+              isFullWidth: false,
               onPressed: onAddPerson,
-              icon: const Icon(Icons.person_add_alt, size: 18),
-              label: const Text('Add person'),
             ),
             if (rows.isNotEmpty && _shareMinor > 0)
-              OutlinedButton.icon(
+              VaultButton(
+                label: 'Split evenly',
+                icon: Icons.call_split_rounded,
+                variant: VaultButtonVariant.secondary,
+                compact: true,
+                isFullWidth: false,
                 onPressed: () {
                   draft.splitEvenly();
                   onChanged();
                 },
-                icon: const Icon(Icons.call_split, size: 18),
-                label: const Text('Split evenly'),
               ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.smd),
         _Remaining(
           unassignedMinor: _unassignedMinor,
           anyPeople: rows.isNotEmpty,
@@ -269,29 +315,38 @@ class _PersonAmountRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    final initials = name.trim().isEmpty
+        ? '?'
+        : name
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((w) => w[0].toUpperCase())
+              .join();
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.only(bottom: AppSpacing.smd),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          IconBadge(monogram: initials, color: c.accent),
+          const SizedBox(width: AppSpacing.smd),
           Expanded(
             child: TextField(
               controller: controller,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
+              style: AppTextStyles.number.copyWith(color: c.textPrimary),
               decoration: InputDecoration(
                 labelText: name,
-                prefixText: '$code ',
-                prefixIcon: const Icon(Icons.person_outline),
-                isDense: true,
+                prefixText: '${Money.symbol(code).trim()} ',
               ),
               onChanged: (_) => onChanged(),
             ),
           ),
           IconButton(
             onPressed: onRemove,
-            icon: const Icon(Icons.close),
+            icon: Icon(Icons.close_rounded, color: c.textSecondary),
             tooltip: 'Remove $name',
           ),
         ],
@@ -319,27 +374,27 @@ class _Remaining extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme.bodySmall;
+    final c = SuiteColors.of(context);
+    final text = AppTextStyles.bodySmall;
     if (!anyPeople) {
       return Text(
         'Nobody named yet — the whole split stays under '
         '"${PeopleLedger.unnamedLabel}". Add people to track who owes what.',
-        style: text?.copyWith(color: scheme.onSurfaceVariant),
+        style: text.copyWith(color: c.textSecondary),
       );
     }
     if (blankRows > 0) {
       return Text(
         'Give everyone on the split an amount.',
-        style: text?.copyWith(color: scheme.error),
+        style: text.copyWith(color: c.negative),
       );
     }
     final amount = Money.format(unassignedMinor.abs(), code: code);
     final (line, color) = switch (unassignedMinor) {
-      0 => ('Fully assigned.', scheme.onSurfaceVariant),
-      > 0 => ('$amount still to assign.', scheme.error),
-      _ => ('$amount over the split total.', scheme.error),
+      0 => ('Fully assigned.', c.positive),
+      > 0 => ('$amount still to assign.', c.negative),
+      _ => ('$amount over the split total.', c.negative),
     };
-    return Text(line, style: text?.copyWith(color: color));
+    return Text(line, style: text.copyWith(color: color));
   }
 }

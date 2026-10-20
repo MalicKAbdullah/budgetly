@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/models/txn.dart';
-import 'package:budgetly/src/core/money.dart';
+import 'package:budgetly/src/core/widgets/money_text.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/core/state/category_filter.dart';
 import 'package:budgetly/src/core/state/txn_filters.dart';
@@ -66,7 +66,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       floatingActionButton: hasAccounts
           ? FloatingActionButton.extended(
               onPressed: () => context.push('/txn/new'),
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add_rounded),
               label: const Text('Transaction'),
             )
           : null,
@@ -100,87 +100,96 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         .where((t) => t.type == TxnType.income && !t.isSettlement)
         .fold(0, (a, t) => a + t.amountMinor);
 
-    return Column(
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(top: AppSpacing.sm),
-          child: PeriodFilterBar(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: AppSpacing.xs),
+              TxnFilterBar(
+                data: data,
+                filters: filters,
+                searchController: _search,
+                onType: (t) => setState(() => _type = t),
+                onAccount: (a) => setState(() => _accountId = a),
+                onCategory: (c) =>
+                    ref.read(categoryFilterProvider.notifier).select(c),
+                onClearAll: _clearAll,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const PeriodFilterBar(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _Totals(
+                count: filtered.length,
+                spent: spent,
+                income: received,
+                code: code,
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        TxnFilterBar(
-          data: data,
-          filters: filters,
-          searchController: _search,
-          onType: (t) => setState(() => _type = t),
-          onAccount: (a) => setState(() => _accountId = a),
-          onCategory: (c) =>
-              ref.read(categoryFilterProvider.notifier).select(c),
-          onClearAll: _clearAll,
-        ),
-        _TotalsLine(
-          count: filtered.length,
-          spent: spent,
-          income: received,
-          code: code,
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: filtered.isEmpty
-              ? _NoMatches(data: data, filters: filters, onClearAll: _clearAll)
-              : _DayGroupedList(txns: filtered, data: data, code: code),
-        ),
+        if (filtered.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _NoMatches(
+              data: data,
+              filters: filters,
+              onClearAll: _clearAll,
+            ),
+          )
+        else
+          ..._daySlivers(context, filtered, data, code),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 104)),
       ],
     );
   }
 }
 
-/// The filtered list split into days, newest first, each under a header that
-/// stays pinned while its day scrolls by and shows what that day cost.
-class _DayGroupedList extends StatelessWidget {
-  const _DayGroupedList({
-    required this.txns,
-    required this.data,
-    required this.code,
-  });
-
-  /// Already sorted newest first by [TxnFilters.apply].
-  final List<Txn> txns;
-  final AppData data;
-  final String code;
-
-  @override
-  Widget build(BuildContext context) {
-    final days = <(DateTime, List<Txn>)>[];
-    for (final t in txns) {
-      final day = DateTime(t.date.year, t.date.month, t.date.day);
-      if (days.isEmpty || days.last.$1 != day) days.add((day, []));
-      days.last.$2.add(t);
-    }
-    return CustomScrollView(
-      slivers: [
-        for (final (day, items) in days)
-          SliverMainAxisGroup(
-            slivers: [
-              PinnedHeaderSliver(
-                child: _DayHeader(day: day, txns: items, code: code),
-              ),
-              SliverList.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (_, i) => TxnTile(
-                  txn: items[i],
-                  data: data,
-                  onTap: () => context.push('/txn/${items[i].id}'),
-                ),
-              ),
-            ],
-          ),
-        const SliverPadding(padding: EdgeInsets.only(bottom: 96)),
-      ],
-    );
+/// The filtered list split into days, newest first: each day is one grouped
+/// card under a header that stays pinned while its day scrolls by and shows
+/// what that day cost. [txns] is already sorted newest first by
+/// [TxnFilters.apply].
+List<Widget> _daySlivers(
+  BuildContext context,
+  List<Txn> txns,
+  AppData data,
+  String code,
+) {
+  final days = <(DateTime, List<Txn>)>[];
+  for (final t in txns) {
+    final day = DateTime(t.date.year, t.date.month, t.date.day);
+    if (days.isEmpty || days.last.$1 != day) days.add((day, []));
+    days.last.$2.add(t);
   }
+  return [
+    for (final (day, items) in days)
+      SliverMainAxisGroup(
+        slivers: [
+          PinnedHeaderSliver(
+            child: _DayHeader(day: day, txns: items, code: code),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+            sliver: SliverToBoxAdapter(
+              child: RowGroup(
+                separatorIndent: 70,
+                children: [
+                  for (final t in items)
+                    TxnTile(
+                      txn: t,
+                      data: data,
+                      onTap: () => context.push('/txn/${t.id}'),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+  ];
 }
 
 class _DayHeader extends StatelessWidget {
@@ -202,36 +211,40 @@ class _DayHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.labelMedium?.copyWith(
-      color: theme.colorScheme.onSurfaceVariant,
-    );
-    // Same "what did this cost me" rule as the totals line above the list.
+    final c = SuiteColors.of(context);
+    // Same "what did this cost me" rule as the totals above the list.
     final spent = txns
         .where((t) => t.type == TxnType.expense && !t.isSettlement)
         .fold(0, (a, t) => a + t.ownShareMinor);
     return Container(
-      color: theme.colorScheme.surfaceContainerLow,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs + 2,
+      color: c.background,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter + AppSpacing.xs,
+        AppSpacing.lg,
+        AppSpacing.gutter + AppSpacing.xs,
+        AppSpacing.sm,
       ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               _label(DateTime.now()),
-              style: style?.copyWith(fontWeight: FontWeight.w600),
+              style: AppTextStyles.labelStrong.copyWith(color: c.textPrimary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           if (spent > 0) ...[
             const SizedBox(width: AppSpacing.sm),
-            Flexible(
-              child: ValueText(
-                '−${Money.format(spent, code: code)}',
-                style: style,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 180),
+              child: AmountText(
+                -spent,
+                code: code,
+                style: AppTextStyles.numberSmall.copyWith(
+                  color: c.textSecondary,
+                ),
+                color: c.textSecondary,
                 alignment: AlignmentDirectional.centerEnd,
               ),
             ),
@@ -242,8 +255,9 @@ class _DayHeader extends StatelessWidget {
   }
 }
 
-class _TotalsLine extends StatelessWidget {
-  const _TotalsLine({
+/// How many transactions the filters let through and what they add up to.
+class _Totals extends StatelessWidget {
+  const _Totals({
     required this.count,
     required this.spent,
     required this.income,
@@ -257,40 +271,64 @@ class _TotalsLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    final c = SuiteColors.of(context);
+    Widget figure(String label, Widget value) => Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(color: c.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          value,
+        ],
+      ),
     );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.xs,
-        AppSpacing.md,
-        AppSpacing.xs,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+      child: VaultCard(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.cardPadding,
+          AppSpacing.md,
+          AppSpacing.cardPadding,
+          AppSpacing.md,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               '$count ${count == 1 ? 'transaction' : 'transactions'}',
-              style: style,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.labelStrong.copyWith(color: c.textSecondary),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          // Two amounts side by side outgrow a phone as soon as the figures
-          // reach six digits, so they share the row rather than claiming it.
-          Expanded(
-            flex: 3,
-            child: ValueText(
-              'Spent ${Money.format(spent, code: code)}'
-              ' · Income ${Money.format(income, code: code)}',
-              style: style,
-              alignment: AlignmentDirectional.centerEnd,
+            const SizedBox(height: AppSpacing.smd),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                figure(
+                  'Spent',
+                  AmountText(
+                    spent,
+                    code: code,
+                    style: AppTextStyles.numberMedium,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                figure(
+                  'Income',
+                  AmountText(
+                    income,
+                    code: code,
+                    style: AppTextStyles.numberMedium,
+                    tone: MoneyTone.signed,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -307,42 +345,28 @@ class _NoTransactions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 48,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'No transactions yet',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              hasAccounts
-                  ? 'Everything you spend and receive will be listed here, '
-                        'grouped by day.'
-                  : 'Add an account first — every transaction belongs to one.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            hasAccounts
-                ? FilledButton.icon(
-                    onPressed: () => context.push('/txn/new'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add transaction'),
-                  )
-                : FilledButton.icon(
-                    onPressed: () => context.push('/accounts'),
-                    icon: const Icon(Icons.account_balance_wallet_outlined),
-                    label: const Text('Add account'),
-                  ),
-          ],
+        child: AppEmptyState(
+          icon: Icons.receipt_long_outlined,
+          title: 'No transactions yet',
+          message: hasAccounts
+              ? 'Everything you spend and receive will be listed here, '
+                    'grouped by day.'
+              : 'Add an account first — every transaction belongs to one.',
+          action: hasAccounts
+              ? VaultButton(
+                  label: 'Add transaction',
+                  icon: Icons.add_rounded,
+                  isFullWidth: false,
+                  onPressed: () => context.push('/txn/new'),
+                )
+              : VaultButton(
+                  label: 'Add account',
+                  icon: Icons.account_balance_wallet_outlined,
+                  isFullWidth: false,
+                  onPressed: () => context.push('/accounts'),
+                ),
         ),
       ),
     );
@@ -373,40 +397,28 @@ class _NoMatches extends StatelessWidget {
       if (filters.search.trim().isNotEmpty) '"${filters.search.trim()}"',
     ];
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 48,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Nothing to show here',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              reasons.isEmpty
-                  ? 'No transactions fall inside the selected dates.'
-                  : 'Nothing in the selected dates matches '
-                        '${reasons.join(' + ')}.',
-              textAlign: TextAlign.center,
-            ),
-            if (filters.isActive) ...[
-              const SizedBox(height: AppSpacing.md),
-              FilledButton.icon(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.xxl,
+        AppSpacing.xl,
+        AppSpacing.xl,
+      ),
+      child: AppEmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'Nothing to show here',
+        message: reasons.isEmpty
+            ? 'No transactions fall inside the selected dates.'
+            : 'Nothing in the selected dates matches '
+                  '${reasons.join(' + ')}.',
+        action: filters.isActive
+            ? VaultButton(
+                label: 'Clear filters',
+                icon: Icons.filter_alt_off_outlined,
+                isFullWidth: false,
                 onPressed: onClearAll,
-                icon: const Icon(Icons.filter_alt_off_outlined),
-                label: const Text('Clear filters'),
-              ),
-            ],
-          ],
-        ),
+              )
+            : null,
       ),
     );
   }

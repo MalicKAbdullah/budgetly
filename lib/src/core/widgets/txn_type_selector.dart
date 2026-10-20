@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 
@@ -15,13 +16,13 @@ class TxnTypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<TxnType>(
+    return AppSegmentedControl<TxnType>(
+      height: 48,
       segments: [
-        for (final t in TxnType.values)
-          ButtonSegment(value: t, label: Text(t.label)),
+        for (final t in TxnType.values) AppSegment(value: t, label: t.label),
       ],
-      selected: {value},
-      onSelectionChanged: (s) => onChanged(s.first),
+      selected: value,
+      onChanged: onChanged,
     );
   }
 }

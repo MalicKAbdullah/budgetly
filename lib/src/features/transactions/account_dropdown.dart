@@ -20,12 +20,26 @@ class AccountDropdown extends StatelessWidget {
     return DropdownButtonFormField<String>(
       isExpanded: true,
       initialValue: value,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(_icon(accounts, value)),
+      ),
       items: [
         for (final a in accounts)
           DropdownMenuItem(value: a.id, child: Text(a.name)),
       ],
       onChanged: onChanged,
     );
+  }
+
+  static IconData _icon(List<Account> accounts, String? id) {
+    final type = accounts.where((a) => a.id == id).firstOrNull?.type;
+    return switch (type) {
+      AccountType.cash => Icons.payments_outlined,
+      AccountType.bank => Icons.account_balance_outlined,
+      AccountType.wallet => Icons.account_balance_wallet_outlined,
+      AccountType.card => Icons.credit_card_outlined,
+      null => Icons.account_balance_outlined,
+    };
   }
 }

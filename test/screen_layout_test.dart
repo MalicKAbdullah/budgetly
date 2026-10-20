@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:core_storage/core_storage.dart';
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -212,9 +213,16 @@ void main() {
           await pump(tester, entry.value(), brightness);
           final background = AppColors.background(brightness);
           final surface = AppColors.surface(brightness);
-          for (final text in tester.widgetList<Text>(find.byType(Text))) {
+          for (final element in find.byType(Text).evaluate()) {
+            final text = element.widget as Text;
             final colour = text.style?.color;
             if (colour == null || (text.data ?? '').isEmpty) continue;
+            // A selected chip inverts: its label is the surface colour on an
+            // ink fill, which the chip itself paints underneath it.
+            if (element.findAncestorWidgetOfExactType<AppChip>()?.selected ??
+                false) {
+              continue;
+            }
             expect(
               colour,
               isNot(background),
