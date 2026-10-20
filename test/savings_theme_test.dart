@@ -44,7 +44,7 @@ void main() {
       tester.widget<Text>(find.text(text)).style!.color!;
 
   Widget wrap(Brightness brightness, Widget child) => MaterialApp(
-    theme: AppTheme.build(brightness, accent: AppColors.emeraldAccent),
+    theme: AppTheme.build(brightness, accent: AppAccents.budgetly),
     home: Scaffold(body: child),
   );
 

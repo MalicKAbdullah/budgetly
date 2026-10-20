@@ -14,10 +14,10 @@ class BudgetlyApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Budgetly',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(Brightness.light, accent: AppColors.emeraldAccent),
+      theme: AppTheme.build(Brightness.light, accent: AppAccents.budgetly),
       darkTheme: AppTheme.build(
         Brightness.dark,
-        accent: AppColors.emeraldAccent,
+        accent: AppAccents.budgetly,
       ),
       themeMode: ThemeMode.system,
       routerConfig: ref.watch(routerProvider),

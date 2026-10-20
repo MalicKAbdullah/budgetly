@@ -101,8 +101,8 @@ packages:
     dependency: "direct main"
     description:
       path: core_backup
-      ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
-      resolved-ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
+      ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
+      resolved-ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.1.0"
@@ -110,8 +110,8 @@ packages:
     dependency: "direct main"
     description:
       path: core_crypto
-      ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
-      resolved-ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
+      ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
+      resolved-ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.0.1"
@@ -119,8 +119,8 @@ packages:
     dependency: "direct main"
     description:
       path: core_lock
-      ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
-      resolved-ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
+      ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
+      resolved-ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.2.0"
@@ -128,8 +128,8 @@ packages:
     dependency: "direct main"
     description:
       path: core_notify
-      ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
-      resolved-ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
+      ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
+      resolved-ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.1.0"
@@ -137,8 +137,8 @@ packages:
     dependency: "direct main"
     description:
       path: core_storage
-      ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
-      resolved-ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
+      ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
+      resolved-ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.0.1"
@@ -146,17 +146,17 @@ packages:
     dependency: "direct main"
     description:
       path: core_theme
-      ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
-      resolved-ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
+      ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
+      resolved-ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
-    version: "0.1.0"
+    version: "0.2.0"
   core_ui:
     dependency: "direct main"
     description:
       path: core_ui
-      ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
-      resolved-ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
+      ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
+      resolved-ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.0.1"
@@ -164,8 +164,8 @@ packages:
     dependency: "direct main"
     description:
       path: core_update
-      ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
-      resolved-ref: "9571738a9464630df73f969b7cb384956a7f4fd5"
+      ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
+      resolved-ref: c12c7e40ce56ad018504258361f92ef0a3282ee3
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.2.0"

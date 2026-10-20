@@ -175,7 +175,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp.router(
-          theme: AppTheme.build(brightness, accent: AppColors.emeraldAccent),
+          theme: AppTheme.build(brightness, accent: AppAccents.budgetly),
           routerConfig: router,
         ),
       ),
