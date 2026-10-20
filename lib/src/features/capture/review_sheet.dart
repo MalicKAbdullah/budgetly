@@ -296,13 +296,11 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.smd),
-                  TextField(
+                  AppTextField(
                     controller: _note,
+                    label: 'Purpose / note',
+                    hint: 'What was this for?',
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      labelText: 'Purpose / note',
-                      hintText: 'What was this for?',
-                    ),
                   ),
                   const SizedBox(height: AppSpacing.smd),
                   _DateField(
