@@ -1,5 +1,6 @@
 import 'package:core_lock/core_lock.dart';
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/providers.dart';
@@ -22,6 +23,7 @@ class BudgetlyApp extends ConsumerWidget {
       // underneath so unlocking restores exactly where the user was.
       builder: (context, child) => AppLockGate(
         controller: ref.watch(lockControllerProvider),
+        appMark: const SuiteAppIcon(app: SuiteApp.budgetly, size: 56),
         child: child ?? const SizedBox.shrink(),
       ),
     );
