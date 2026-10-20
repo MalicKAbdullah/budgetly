@@ -49,42 +49,42 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_crypto
-      ref: 9571738a9464630df73f969b7cb384956a7f4fd5
+      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
   core_storage:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: 9571738a9464630df73f969b7cb384956a7f4fd5
+      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
   core_theme:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_theme
-      ref: 9571738a9464630df73f969b7cb384956a7f4fd5
+      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
   core_ui:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
-      ref: 9571738a9464630df73f969b7cb384956a7f4fd5
+      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
   core_backup:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_backup
-      ref: 9571738a9464630df73f969b7cb384956a7f4fd5
+      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
   core_lock:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_lock
-      ref: 9571738a9464630df73f969b7cb384956a7f4fd5
+      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
   core_notify:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_notify
-      ref: 9571738a9464630df73f969b7cb384956a7f4fd5
+      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
   core_update:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_update
-      ref: 9571738a9464630df73f969b7cb384956a7f4fd5
+      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
 
   cupertino_icons: ^1.0.8
   home_widget: ^0.10.0
