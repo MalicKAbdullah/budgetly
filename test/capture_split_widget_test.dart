@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'dart:typed_data';
 
 import 'package:core_storage/core_storage.dart';
@@ -161,7 +162,7 @@ void main() {
 
   Future<void> addPerson(WidgetTester tester, String name) async {
     await tapVisible(tester, find.widgetWithText(OutlinedButton, 'Add person'));
-    await tester.tap(find.widgetWithText(ListTile, name));
+    await tester.tap(find.widgetWithText(AppListRow, name));
     await tester.pumpAndSettle();
   }
 

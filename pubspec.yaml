@@ -41,6 +41,7 @@ dependencies:
   path_provider: ^2.1.3
   flutter_secure_storage: ^9.2.2
   file_picker: ^10.1.9
+  package_info_plus: ^8.0.0
   pdf: ^3.12.0
   printing: ^5.14.3
 
@@ -49,42 +50,42 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_crypto
-      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
   core_storage:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
   core_theme:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_theme
-      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
   core_ui:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
-      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
   core_backup:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_backup
-      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
   core_lock:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_lock
-      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
   core_notify:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_notify
-      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
   core_update:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_update
-      ref: 4809565c4d52e3ec61dc514dc240fa40954ab842
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
 
   cupertino_icons: ^1.0.8
   home_widget: ^0.10.0
@@ -95,14 +96,31 @@ dev_dependencies:
 
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.6
 
 flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/icon/icon.png
-  adaptive_icon_background: "#0B0B0D"
+  adaptive_icon_background: "#0F62D6"
   adaptive_icon_foreground: assets/icon/icon_foreground.png
+  adaptive_icon_monochrome: assets/icon/icon_monochrome.png
   remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#F6F7F9"
+  color_dark: "#0A0C10"
+  image: assets/brand/splash-tile.png
+  branding: assets/brand/offlyne-endorsement.png
+  branding_dark: assets/brand/offlyne-endorsement-white.png
+  android_12:
+    image: assets/icon/icon_foreground.png
+    icon_background_color: "#0F62D6"
+    icon_background_color_dark: "#0F62D6"
+    color: "#F6F7F9"
+    color_dark: "#0A0C10"
+    branding: assets/brand/offlyne-endorsement.png
+    branding_dark: assets/brand/offlyne-endorsement-white.png
 
 # The following section is specific to Flutter packages.
 flutter:

@@ -1,6 +1,7 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:budgetly/src/core/money.dart';
 
 /// An amount shown at the end of a row.
 ///
@@ -81,5 +82,41 @@ final class MoneyCell extends StatelessWidget {
       color: color,
       alignment: AlignmentDirectional.centerEnd,
     ),
+  );
+}
+
+/// A stored amount in minor units, set with the suite's money type: tabular
+/// figures, a true minus, and the currency and cents smaller than the whole.
+final class AmountText extends StatelessWidget {
+  const AmountText(
+    this.minor, {
+    required this.code,
+    this.style,
+    this.tone = MoneyTone.neutral,
+    this.showPlus = false,
+    this.color,
+    this.alignment = AlignmentDirectional.centerStart,
+    super.key,
+  });
+
+  final int minor;
+  final String code;
+  final TextStyle? style;
+  final MoneyTone tone;
+  final bool showPlus;
+  final Color? color;
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) => MoneyText(
+    minor / 100,
+    currency: Money.symbol(code).trim(),
+    // Whole amounts stay whole; cents only appear when there are some.
+    decimals: minor % 100 == 0 ? 0 : 2,
+    style: style,
+    tone: tone,
+    showPlus: showPlus,
+    color: color,
+    alignment: alignment,
   );
 }

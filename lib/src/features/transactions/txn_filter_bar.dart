@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/models/txn.dart';
@@ -37,49 +38,13 @@ class TxnFilterBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          child: TextField(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+          child: AppSearchField(
             controller: searchController,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              isDense: true,
-              // The shared theme pads 16px vertically for full-size form
-              // fields; a search box sits in a list header and has to stay
-              // compact, so it sets its own rhythm. The icon constraints keep
-              // the 48px minimum tap target from driving the field's height.
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.sm + 2,
-              ),
-              prefixIcon: const Icon(Icons.search, size: 20),
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
-              ),
-              hintText: 'Search notes, people, accounts',
-              suffixIcon: searchController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Clear search',
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
-                      ),
-                      icon: const Icon(Icons.close, size: 18),
-                      onPressed: () => searchController.clear(),
-                    ),
-              suffixIconConstraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
-              ),
-            ),
+            hint: 'Search notes, people, accounts',
           ),
         ),
+        const SizedBox(height: AppSpacing.smd),
         _Pickers(
           data: data,
           filters: filters,
@@ -116,14 +81,17 @@ class _Pickers extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A category that no longer exists must not be handed to the dropdown —
-    // it asserts on a value with no matching item.
+    final accountName = data.accountById(filters.accountId)?.name;
+    // A category that no longer exists reads as no filter at all.
     final id = filters.categoryId;
-    final categoryValue =
-        id == null || id.isEmpty || data.categoryById(id) != null ? id : null;
+    final categoryName = id == null
+        ? null
+        : id.isEmpty
+        ? kUncategorizedLabel
+        : data.categoryById(id)?.name;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
       child: Row(
         children: [
           for (final (label, t) in [
@@ -132,53 +100,105 @@ class _Pickers extends StatelessWidget {
             ('Income', TxnType.income),
             ('Transfers', TxnType.transfer),
           ]) ...[
-            ChoiceChip(
-              label: Text(label),
+            AppChip(
+              label: label,
               selected: filters.type == t,
-              onSelected: (_) => onType(t),
+              onTap: () => onType(t),
             ),
             const SizedBox(width: AppSpacing.sm),
           ],
-          const SizedBox(width: AppSpacing.sm),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<String?>(
-              value: filters.accountId,
-              hint: const Text('All accounts'),
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('All accounts'),
-                ),
-                for (final a in data.accounts)
-                  DropdownMenuItem<String?>(value: a.id, child: Text(a.name)),
-              ],
-              onChanged: onAccount,
-            ),
+          Container(
+            width: 1,
+            height: 20,
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            color: SuiteColors.of(context).border,
           ),
-          const SizedBox(width: AppSpacing.md),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<String?>(
-              value: categoryValue,
-              hint: const Text('All categories'),
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('All categories'),
-                ),
-                // Transactions with no category are filterable too — they are
-                // the `''` bucket the dashboard breakdown also shows.
-                const DropdownMenuItem<String?>(
-                  value: '',
-                  child: Text(kUncategorizedLabel),
-                ),
-                for (final c in data.categories)
-                  DropdownMenuItem<String?>(value: c.id, child: Text(c.name)),
-              ],
-              onChanged: onCategory,
-            ),
+          const SizedBox(width: AppSpacing.sm),
+          AppChip(
+            label: accountName ?? 'All accounts',
+            icon: Icons.account_balance_outlined,
+            selected: accountName != null,
+            onTap: () async {
+              final picked = await _pick(context, 'Account', [
+                (null, 'All accounts'),
+                for (final a in data.accounts) (a.id, a.name),
+              ], filters.accountId);
+              if (picked != null) onAccount(picked.$1);
+            },
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          AppChip(
+            label: categoryName ?? 'All categories',
+            icon: Icons.sell_outlined,
+            selected: categoryName != null,
+            onTap: () async {
+              final picked = await _pick(context, 'Category', [
+                (null, 'All categories'),
+                // Transactions with no category are filterable too — they
+                // are the `''` bucket the dashboard breakdown also shows.
+                ('', kUncategorizedLabel),
+                for (final c in data.categories) (c.id, c.name),
+              ], filters.categoryId);
+              if (picked != null) onCategory(picked.$1);
+            },
           ),
         ],
       ),
+    );
+  }
+
+  /// A sheet listing [options]; resolves to the tapped one (whose id may be
+  /// null for "all"), or null when dismissed.
+  static Future<(String?, String)?> _pick(
+    BuildContext context,
+    String title,
+    List<(String?, String)> options,
+    String? current,
+  ) {
+    return showModalBottomSheet<(String?, String)>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        final c = SuiteColors.of(context);
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                0,
+                AppSpacing.gutter,
+                AppSpacing.lg,
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.smd),
+                  child: Text(
+                    title,
+                    style: AppTextStyles.h3.copyWith(color: c.textPrimary),
+                  ),
+                ),
+                RowGroup(
+                  children: [
+                    for (final o in options)
+                      AppListRow(
+                        title: o.$2,
+                        trailing: o.$1 == current
+                            ? Icon(Icons.check_rounded, color: c.accent)
+                            : null,
+                        onTap: () => Navigator.of(context).pop(o),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -201,11 +221,12 @@ class ActiveFilterSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.xs,
+        AppSpacing.gutter,
         AppSpacing.sm,
+        AppSpacing.smd,
         0,
       ),
       child: Row(
@@ -213,13 +234,13 @@ class ActiveFilterSummary extends StatelessWidget {
           if (filters.categoryId != null)
             Flexible(
               child: InputChip(
-                avatar: const Icon(Icons.label_outline, size: 18),
+                avatar: const Icon(Icons.sell_outlined, size: 16),
                 label: Text(
                   'Category: ${categoryFilterLabel(data, filters.categoryId!)}',
                   overflow: TextOverflow.ellipsis,
                 ),
                 onDeleted: onClearCategory,
-                deleteIconColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                deleteIconColor: c.textSecondary,
                 tooltip: 'Show all categories',
               ),
             ),

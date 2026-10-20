@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/logic/settle_match.dart';
@@ -55,8 +56,7 @@ class _SettleSuggestionPickerState extends State<SettleSuggestionPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final c = SuiteColors.of(context);
     final all = widget.suggestions;
     final selectedIndex = all.indexWhere(
       (s) => s.position.key == widget.selectedKey,
@@ -73,17 +73,18 @@ class _SettleSuggestionPickerState extends State<SettleSuggestionPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Settles a balance?', style: theme.textTheme.titleSmall),
+        Text(
+          'Settles a balance?',
+          style: AppTextStyles.h4.copyWith(color: c.textPrimary),
+        ),
         const SizedBox(height: 2),
         Text(
           receiving
               ? 'Money in can be someone paying you back.'
               : 'Money out can be you paying someone back.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
+          style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.smd),
         for (final s in shown)
           _SuggestionTile(
             s: s,
@@ -103,13 +104,22 @@ class _SettleSuggestionPickerState extends State<SettleSuggestionPicker> {
           ),
         if (selectedIndex >= 0 && widget.amountMinor != null) ...[
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            SettleSuggestionPicker.outcomeText(
-              all[selectedIndex],
-              widget.amountMinor!,
-              widget.code,
-            ),
-            style: theme.textTheme.bodySmall?.copyWith(color: scheme.primary),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.check_rounded, size: 18, color: c.accent),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  SettleSuggestionPicker.outcomeText(
+                    all[selectedIndex],
+                    widget.amountMinor!,
+                    widget.code,
+                  ),
+                  style: AppTextStyles.bodySmall.copyWith(color: c.textPrimary),
+                ),
+              ),
+            ],
           ),
         ],
       ],
@@ -132,71 +142,101 @@ class _SuggestionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final balance = Money.format(s.openMinor, code: code);
+    final c = SuiteColors.of(context);
     final reasons = [
       if (s.exactAmount) 'Exact amount',
       if (s.namedInText) 'Named in the alert',
     ];
+    final owed = s.kind == DebtKind.owedToYou;
+    final name = s.position.name.trim();
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Material(
-        color: selected
-            ? scheme.secondaryContainer
-            : scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: AppSpacing.xs,
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: Material(
+          color: selected ? c.accentContainer : c.surfaceAlt,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            side: BorderSide(
+              color: selected ? c.accent : Colors.transparent,
+              width: 1.5,
             ),
-            child: Row(
-              children: [
-                Icon(
-                  selected ? Icons.check_circle : Icons.handshake_outlined,
-                  size: 20,
-                  color: selected ? scheme.primary : scheme.onSurfaceVariant,
+          ),
+          child: InkWell(
+            customBorder: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            ),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 60),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.smd,
+                  vertical: AppSpacing.sm,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        s.position.name,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: scheme.onSurface,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                child: Row(
+                  children: [
+                    AnimatedSwitcher(
+                      duration: AppMotion.fast,
+                      child: selected
+                          ? IconBadge(
+                              key: const ValueKey('on'),
+                              icon: Icons.check_rounded,
+                              color: c.accent,
+                              solid: true,
+                              size: 36,
+                            )
+                          : IconBadge(
+                              key: const ValueKey('off'),
+                              monogram: name.isEmpty
+                                  ? '?'
+                                  : name[0].toUpperCase(),
+                              size: 36,
+                            ),
+                    ),
+                    const SizedBox(width: AppSpacing.smd),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.position.name,
+                            style: AppTextStyles.body.copyWith(
+                              color: c.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            owed
+                                ? 'Owes you ${Money.format(s.openMinor, code: code)}'
+                                : 'You owe ${Money.format(s.openMinor, code: code)}',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: c.textSecondary,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        s.kind == DebtKind.owedToYou
-                            ? 'Owes you $balance'
-                            : 'You owe $balance',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                    ),
+                    if (reasons.isNotEmpty) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Flexible(
+                        child: Text(
+                          reasons.join(' · '),
+                          textAlign: TextAlign.end,
+                          style: AppTextStyles.caption.copyWith(
+                            color: c.accent,
+                          ),
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                if (reasons.isNotEmpty) ...[
-                  const SizedBox(width: AppSpacing.xs),
-                  Flexible(
-                    child: Text(
-                      reasons.join(' · '),
-                      textAlign: TextAlign.end,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: scheme.primary,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ),

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:core_storage/core_storage.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -190,7 +191,7 @@ void main() {
     expect(find.text('1 transaction'), findsOneWidget);
 
     // Combine it with a type that cannot match an expense category.
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Income'));
+    await tester.tap(find.widgetWithText(AppChip, 'Income'));
     await tester.pumpAndSettle();
 
     expect(find.text('0 transactions'), findsOneWidget);

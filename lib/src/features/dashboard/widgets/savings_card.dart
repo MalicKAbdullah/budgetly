@@ -19,99 +19,77 @@ class SavingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = Savings.position(data);
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final brightness = Theme.of(context).brightness;
+    final c = SuiteColors.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Card(
-        child: InkWell(
-          onTap: () => context.push('/savings'),
-          borderRadius: BorderRadius.circular(AppSpacing.borderRadiusLg),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.only(bottom: AppSpacing.smd),
+      child: VaultCard(
+        onTap: () => context.push('/savings'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.savings_outlined,
-                      size: 18,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'Savings',
-                        style: text.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right,
-                      size: 18,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: StatTile(
-                        label: p.hasTarget ? 'Free to spend' : 'Holding',
-                        value: Money.format(
-                          p.hasTarget ? p.freeToSpendMinor : p.positionMinor,
-                          code: code,
-                        ),
-                        valueColor: p.isDipping
-                            ? AppColors.warning(brightness)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: StatTile(
-                        label: p.hasTarget ? 'Holding' : 'Target',
-                        value: Money.format(
-                          p.hasTarget ? p.positionMinor : 0,
-                          code: code,
-                        ),
-                        caption: p.hasTarget
-                            ? 'Target ${Money.format(p.targetMinor, code: code)}'
-                            : 'Not set',
-                      ),
-                    ),
-                  ],
-                ),
-                if (p.uncountedReceivablesMinor > 0) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    '${Money.format(p.uncountedReceivablesMinor, code: code)} '
-                    'lent out, not counted',
-                    style: text.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                IconBadge(icon: Icons.savings_outlined, color: c.positive),
+                const SizedBox(width: AppSpacing.smd),
+                Expanded(
+                  child: Text(
+                    'Savings',
+                    style: AppTextStyles.h4.copyWith(color: c.textPrimary),
                   ),
-                ],
-                const SizedBox(height: AppSpacing.sm),
-                SavingsProgress(position: p, code: code),
-                if (p.isDipping) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  SavingsDipWarning(
-                    shortfallMinor: -p.freeToSpendMinor,
-                    code: code,
-                  ),
-                ],
+                ),
+                Icon(Icons.chevron_right_rounded, color: c.textTertiary),
               ],
             ),
-          ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: StatTile(
+                    label: p.hasTarget ? 'Free to spend' : 'Holding',
+                    value: Money.format(
+                      p.hasTarget ? p.freeToSpendMinor : p.positionMinor,
+                      code: code,
+                    ),
+                    valueColor: p.isDipping ? c.warning : null,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: StatTile(
+                    label: p.hasTarget ? 'Holding' : 'Target',
+                    value: Money.format(
+                      p.hasTarget ? p.positionMinor : 0,
+                      code: code,
+                    ),
+                    caption: p.hasTarget
+                        ? 'Target ${Money.format(p.targetMinor, code: code)}'
+                        : 'Not set',
+                  ),
+                ),
+              ],
+            ),
+            if (p.uncountedReceivablesMinor > 0) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                '${Money.format(p.uncountedReceivablesMinor, code: code)} '
+                'lent out, not counted',
+                style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            SavingsProgress(position: p, code: code),
+            if (p.isDipping) ...[
+              const SizedBox(height: AppSpacing.sm),
+              SavingsDipWarning(
+                shortfallMinor: -p.freeToSpendMinor,
+                code: code,
+              ),
+            ],
+          ],
         ),
       ),
     );

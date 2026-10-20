@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/models/category.dart';
 import 'package:budgetly/src/core/money.dart';
@@ -40,27 +41,24 @@ class CaptureSplitSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
+    final c = SuiteColors.of(context);
     final amounts = draft.peopleMinor(totalMinor);
     final remaining = draft.plan(totalMinor).remainingMinor;
     final problem = draft.validate(totalMinor);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Shared with', style: text.titleSmall),
-        const SizedBox(height: AppSpacing.xs),
+        _SubHeading('Shared with', color: c.textSecondary),
         if (draft.people.isNotEmpty) ...[
-          SegmentedButton<PeopleInput>(
+          AppSegmentedControl<PeopleInput>(
             segments: const [
-              ButtonSegment(value: PeopleInput.amount, label: Text('Amount')),
-              ButtonSegment(value: PeopleInput.percent, label: Text('Percent')),
+              AppSegment(value: PeopleInput.amount, label: 'Amount'),
+              AppSegment(value: PeopleInput.percent, label: 'Percent'),
             ],
-            selected: {draft.input},
-            showSelectedIcon: false,
-            onSelectionChanged: (s) =>
-                _edit(() => draft.setInput(s.first, totalMinor)),
+            selected: draft.input,
+            onChanged: (v) => _edit(() => draft.setInput(v, totalMinor)),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.smd),
         ],
         for (var i = 0; i < draft.people.length; i++)
           SplitPersonRow(
@@ -75,34 +73,42 @@ class CaptureSplitSection extends StatelessWidget {
           ),
         Wrap(
           spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.xs,
+          runSpacing: AppSpacing.sm,
           children: [
-            OutlinedButton.icon(
+            VaultButton(
+              label: 'Add person',
+              icon: Icons.person_add_alt_rounded,
+              variant: VaultButtonVariant.secondary,
+              compact: true,
+              isFullWidth: false,
               onPressed: onAddPerson,
-              icon: const Icon(Icons.person_add_alt, size: 18),
-              label: const Text('Add person'),
             ),
             if (draft.people.isNotEmpty && totalMinor > 0) ...[
-              OutlinedButton.icon(
+              VaultButton(
+                label: 'Equally, with me',
+                icon: Icons.call_split_rounded,
+                variant: VaultButtonVariant.secondary,
+                compact: true,
+                isFullWidth: false,
                 onPressed: () => _edit(
                   () => draft.splitEqually(totalMinor, includeMe: true),
                 ),
-                icon: const Icon(Icons.call_split, size: 18),
-                label: const Text('Equally, with me'),
               ),
-              OutlinedButton.icon(
+              VaultButton(
+                label: 'Equally, just them',
+                icon: Icons.groups_outlined,
+                variant: VaultButtonVariant.secondary,
+                compact: true,
+                isFullWidth: false,
                 onPressed: () => _edit(
                   () => draft.splitEqually(totalMinor, includeMe: false),
                 ),
-                icon: const Icon(Icons.groups_outlined, size: 18),
-                label: const Text('Equally, just them'),
               ),
             ],
           ],
         ),
-        const SizedBox(height: AppSpacing.md),
-        Text('My share', style: text.titleSmall),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: AppSpacing.lg),
+        _SubHeading('My share', color: c.textSecondary),
         for (var i = 0; i < draft.categories.length; i++)
           SplitCategoryRow(
             // Keyed by row so a dropdown never keeps a removed row's choice.
@@ -116,13 +122,16 @@ class CaptureSplitSection extends StatelessWidget {
           ),
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
+          child: VaultButton(
+            label: 'Add category',
+            icon: Icons.add_rounded,
+            variant: VaultButtonVariant.secondary,
+            compact: true,
+            isFullWidth: false,
             onPressed: () => _edit(draft.addCategory),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add category'),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         SplitRemainderLine(
           owedBackMinor: amounts.fold(0, (s, a) => s + a),
           remainingMinor: remaining,
@@ -130,16 +139,31 @@ class CaptureSplitSection extends StatelessWidget {
         ),
         // An unplaced amount is already said above; anything else that blocks
         // saving is said here.
-        if (remaining == 0 && problem != null)
+        if (remaining == 0 && problem != null) ...[
+          const SizedBox(height: AppSpacing.xs),
           Text(
             problem,
-            style: text.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.error,
-            ),
+            style: AppTextStyles.bodySmall.copyWith(color: c.negative),
           ),
+        ],
       ],
     );
   }
+}
+
+class _SubHeading extends StatelessWidget {
+  const _SubHeading(this.text, {required this.color});
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+    child: Text(
+      text.toUpperCase(),
+      style: AppTextStyles.overline.copyWith(color: color),
+    ),
+  );
 }
 
 /// One person's part, typed as an amount or a percentage of the payment. In
@@ -175,7 +199,7 @@ class SplitPersonRow extends StatelessWidget {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: name,
-              prefixIcon: const Icon(Icons.person_outline),
+              prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
               prefixText: percent ? null : Money.symbol(code),
               suffixText: percent ? '%' : null,
               helperText: percent
@@ -188,7 +212,7 @@ class SplitPersonRow extends StatelessWidget {
         ),
         IconButton(
           onPressed: onRemove,
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.close_rounded),
           tooltip: 'Remove $name',
         ),
       ],
@@ -217,51 +241,61 @@ class SplitCategoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-    child: Row(
+    padding: const EdgeInsets.only(bottom: AppSpacing.smd),
+    // Two lines: the sheet is too narrow for a readable category name, an
+    // amount and two actions side by side.
+    child: Column(
       children: [
-        Expanded(
-          child: DropdownButtonFormField<String?>(
-            isExpanded: true,
-            initialValue: row.categoryId,
-            decoration: const InputDecoration(
-              labelText: 'Category',
-              isDense: true,
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String?>(
+                isExpanded: true,
+                initialValue: row.categoryId,
+                decoration: const InputDecoration(labelText: 'Category'),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Uncategorized'),
+                  ),
+                  for (final c in categories)
+                    DropdownMenuItem(value: c.id, child: Text(c.name)),
+                ],
+                onChanged: (v) {
+                  row.categoryId = v;
+                  onChanged();
+                },
+              ),
             ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('Uncategorized')),
-              for (final c in categories)
-                DropdownMenuItem(value: c.id, child: Text(c.name)),
-            ],
-            onChanged: (v) {
-              row.categoryId = v;
-              onChanged();
-            },
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        SizedBox(
-          width: 120,
-          child: TextField(
-            controller: row.amount,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'Amount',
-              prefixText: Money.symbol(code),
-              isDense: true,
+            IconButton(
+              onPressed: onRemove,
+              icon: const Icon(Icons.close_rounded),
+              tooltip: 'Remove category',
             ),
-            onChanged: (_) => onChanged(),
-          ),
+          ],
         ),
-        IconButton(
-          onPressed: onFillRest,
-          icon: const Icon(Icons.vertical_align_bottom),
-          tooltip: 'Put the rest here',
-        ),
-        IconButton(
-          onPressed: onRemove,
-          icon: const Icon(Icons.close),
-          tooltip: 'Remove category',
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: row.amount,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Amount',
+                  prefixText: Money.symbol(code),
+                ),
+                onChanged: (_) => onChanged(),
+              ),
+            ),
+            IconButton(
+              onPressed: onFillRest,
+              icon: const Icon(Icons.vertical_align_bottom_rounded),
+              tooltip: 'Put the rest here',
+            ),
+          ],
         ),
       ],
     ),
@@ -284,23 +318,52 @@ class SplitRemainderLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final style = Theme.of(context).textTheme.bodySmall;
+    final c = SuiteColors.of(context);
     final left = Money.format(remainingMinor.abs(), code: code);
-    final (line, color) = switch (remainingMinor) {
-      0 => ('Fully assigned.', scheme.onSurfaceVariant),
-      > 0 => ('$left left to assign.', scheme.error),
-      _ => ('$left over the total.', scheme.error),
+    final done = remainingMinor == 0;
+    final line = switch (remainingMinor) {
+      0 => 'Fully assigned.',
+      > 0 => '$left left to assign.',
+      _ => '$left over the total.',
     };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Owed back to you: ${Money.format(owedBackMinor, code: code)}',
-          style: style?.copyWith(color: scheme.onSurface),
-        ),
-        Text(line, style: style?.copyWith(color: color)),
-      ],
+    final tone = done ? c.positive : c.negative;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.smd),
+      decoration: BoxDecoration(
+        color: c.surfaceAlt,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            done ? Icons.check_circle_outline_rounded : Icons.error_outline,
+            size: 20,
+            color: tone,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Owed back to you: ${Money.format(owedBackMinor, code: code)}',
+                  style: AppTextStyles.labelStrong.copyWith(
+                    color: c.textPrimary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  line,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: done ? c.textSecondary : c.negative,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

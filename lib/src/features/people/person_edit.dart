@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
@@ -74,6 +75,10 @@ Future<void> confirmDeletePerson(
         ),
         FilledButton(
           onPressed: () => Navigator.pop(dialogContext, true),
+          style: FilledButton.styleFrom(
+            backgroundColor: SuiteColors.of(dialogContext).negative,
+            foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+          ),
           child: const Text('Delete'),
         ),
       ],
@@ -137,7 +142,12 @@ class _PersonNameScreenState extends State<_PersonNameScreen> {
         actions: [TextButton(onPressed: _submit, child: const Text('Save'))],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.md,
+          AppSpacing.gutter,
+          AppSpacing.xl,
+        ),
         children: [
           TextField(
             controller: _name,
@@ -151,7 +161,7 @@ class _PersonNameScreenState extends State<_PersonNameScreen> {
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: AppSpacing.lg),
-          FilledButton(onPressed: _submit, child: const Text('Save')),
+          VaultButton(onPressed: _submit, label: 'Save'),
         ],
       ),
     );

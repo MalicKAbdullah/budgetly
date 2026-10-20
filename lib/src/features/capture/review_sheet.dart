@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -245,147 +246,193 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
     final sameAccount =
         _isTransfer && _toAccountId != null && _toAccountId == _accountId;
 
+    final c = SuiteColors.of(context);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          0,
-          AppSpacing.md,
-          AppSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _header(code),
-            const SizedBox(height: AppSpacing.md),
-            CapturedRawText(text: widget.notice.rawText),
-            const SizedBox(height: AppSpacing.md),
-            CaptureModeSelector(
-              mode: _mode,
-              // A settlement only makes sense in the direction it was chosen
-              // for, so a new mode starts from no person.
-              onChanged: (m) => setState(() {
-                _mode = m;
-                _settle = null;
-              }),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                0,
+                AppSpacing.gutter,
+                AppSpacing.lg,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _header(code),
+                  const SizedBox(height: AppSpacing.mdl),
+                  CapturedRawText(text: widget.notice.rawText),
+                  const SizedBox(height: AppSpacing.mdl),
+                  CaptureModeSelector(
+                    mode: _mode,
+                    // A settlement only makes sense in the direction it was
+                    // chosen for, so a new mode starts from no person.
+                    onChanged: (m) => setState(() {
+                      _mode = m;
+                      _settle = null;
+                    }),
+                  ),
+                  if (_transferSuggested) ...[
+                    const SizedBox(height: AppSpacing.smd),
+                    const _TransferHintLine(),
+                  ],
+                  const SizedBox(height: AppSpacing.mdl),
+                  AppTextField(
+                    controller: _amount,
+                    label: 'Amount',
+                    prefixText: Money.symbol(code),
+                    clearable: false,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textStyle: AppTextStyles.numberMedium.copyWith(
+                      color: c.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.smd),
+                  TextField(
+                    controller: _note,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Purpose / note',
+                      hintText: 'What was this for?',
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.smd),
+                  _DateField(
+                    label: 'Date',
+                    value: DateFormat.yMMMd().add_jm().format(_date),
+                    onTap: _pickDate,
+                  ),
+                  const SizedBox(height: AppSpacing.smd),
+                  ..._accountFields(accounts, sameAccount),
+                  if (suggestions.isNotEmpty && !_splitOn) ...[
+                    const SizedBox(height: AppSpacing.mdl),
+                    _Panel(
+                      child: SettleSuggestionPicker(
+                        suggestions: suggestions,
+                        selectedKey: _settle?.position.key,
+                        amountMinor: Money.parse(_amount.text),
+                        code: code,
+                        onChanged: (s) => setState(() => _settle = s),
+                      ),
+                    ),
+                  ],
+                  if (_mode == CaptureMode.expense &&
+                      !_settlesWhole &&
+                      !_splitOn) ...[
+                    const SizedBox(height: AppSpacing.smd),
+                    CategoryPicker(
+                      categories: categories,
+                      value: _categoryId,
+                      onChanged: (v) => setState(() => _categoryId = v),
+                    ),
+                  ],
+                  if (_mode == CaptureMode.expense && _settle == null) ...[
+                    const SizedBox(height: AppSpacing.smd),
+                    _Panel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              'Split this payment',
+                              style: AppTextStyles.h4.copyWith(
+                                color: c.textPrimary,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Share it with people or across categories — '
+                              'only your share counts as your spending',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: c.textSecondary,
+                              ),
+                            ),
+                            value: _isSplit,
+                            onChanged: (v) => setState(() {
+                              _isSplit = v;
+                              if (v) {
+                                _split.start(
+                                  totalMinor: _totalMinor,
+                                  categoryId: _categoryId,
+                                );
+                              }
+                            }),
+                          ),
+                          if (_splitOn && data != null) ...[
+                            Divider(height: AppSpacing.lg, color: c.hairline),
+                            CaptureSplitSection(
+                              draft: _split,
+                              totalMinor: _totalMinor,
+                              categories: categories,
+                              // Rows only ever hold ids the person picker
+                              // just registered.
+                              nameFor: (id) => data.personById(id)!.name,
+                              code: code,
+                              onAddPerson: _addPerson,
+                              onChanged: () => setState(() {}),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (accounts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: AppSpacing.md),
+                      child: AppBanner(
+                        kind: BannerKind.warning,
+                        title: 'Add an account first to save this.',
+                      ),
+                    ),
+                  if (_isTransfer && accounts.length < 2)
+                    const Padding(
+                      padding: EdgeInsets.only(top: AppSpacing.md),
+                      child: AppBanner(
+                        kind: BannerKind.warning,
+                        title:
+                            'A transfer needs two accounts — add the one the '
+                            'money went into (for example Cash).',
+                      ),
+                    ),
+                ],
+              ),
             ),
-            if (_transferSuggested) ...[
-              const SizedBox(height: AppSpacing.sm),
-              const _TransferHintLine(),
-            ],
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: _amount,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Amount',
-                prefixText: Money.symbol(code),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: _note,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Purpose / note',
-                hintText: 'What was this for?',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              onPressed: _pickDate,
-              icon: const Icon(Icons.event_outlined),
-              label: Text(DateFormat.yMMMd().add_jm().format(_date)),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ..._accountFields(accounts, sameAccount),
-            if (suggestions.isNotEmpty && !_splitOn) ...[
-              const SizedBox(height: AppSpacing.lg),
-              SettleSuggestionPicker(
-                suggestions: suggestions,
-                selectedKey: _settle?.position.key,
-                amountMinor: Money.parse(_amount.text),
-                code: code,
-                onChanged: (s) => setState(() => _settle = s),
-              ),
-            ],
-            if (_mode == CaptureMode.expense &&
-                !_settlesWhole &&
-                !_splitOn) ...[
-              const SizedBox(height: AppSpacing.md),
-              CategoryPicker(
-                categories: categories,
-                value: _categoryId,
-                onChanged: (v) => setState(() => _categoryId = v),
-              ),
-            ],
-            if (_mode == CaptureMode.expense && _settle == null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Split this payment'),
-                subtitle: const Text(
-                  'Share it with people or across categories — only your '
-                  'share counts as your spending',
+          ),
+          BottomActionBar(
+            // Dismiss sits on the left as the quiet way out, so the primary
+            // keeps the width its longest label ("Record settlement") needs.
+            summary: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                onPressed: _dismiss,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(64, AppSpacing.buttonHeight),
+                  foregroundColor: c.textPrimary,
                 ),
-                value: _isSplit,
-                onChanged: (v) => setState(() {
-                  _isSplit = v;
-                  if (v) {
-                    _split.start(
-                      totalMinor: _totalMinor,
-                      categoryId: _categoryId,
-                    );
-                  }
-                }),
+                child: const Text('Dismiss'),
               ),
-            ],
-            if (_splitOn && data != null) ...[
-              CaptureSplitSection(
-                draft: _split,
-                totalMinor: _totalMinor,
-                categories: categories,
-                // Rows only ever hold ids the person picker just registered.
-                nameFor: (id) => data.personById(id)!.name,
-                code: code,
-                onAddPerson: _addPerson,
-                onChanged: () => setState(() {}),
-              ),
-            ],
-            if (accounts.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: AppSpacing.sm),
-                child: Text('Add an account first to save this.'),
-              ),
-            if (_isTransfer && accounts.length < 2)
-              const Padding(
-                padding: EdgeInsets.only(top: AppSpacing.sm),
-                child: Text(
-                  'A transfer needs two accounts — add the one the money went '
-                  'into (for example Cash).',
-                ),
-              ),
-            const SizedBox(height: AppSpacing.lg),
-            FilledButton(
+            ),
+            primary: VaultButton(
+              isFullWidth: false,
               onPressed: _canAdd(accounts) ? _add : null,
-              child: Text(
-                _settle != null
-                    ? 'Record settlement'
-                    : _splitOn
-                    ? 'Add split'
-                    : _isTransfer
-                    ? 'Add transfer'
-                    : 'Add transaction',
-              ),
+              label: _settle != null
+                  ? 'Record settlement'
+                  : _splitOn
+                  ? 'Add split'
+                  : _isTransfer
+                  ? 'Add transfer'
+                  : 'Add transaction',
             ),
-            const SizedBox(height: AppSpacing.sm),
-            TextButton(onPressed: _dismiss, child: const Text('Dismiss')),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -420,23 +467,111 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
   }
 
   Widget _header(String code) {
-    final c = _candidate;
-    final theme = Theme.of(context);
-    final title = c == null
+    final cand = _candidate;
+    final c = SuiteColors.of(context);
+    final title = cand == null
         ? 'Fill in this one yourself'
-        : '${_mode.label} · ${Money.format(c.amountMinor, code: code)}';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+        : '${_mode.label} · ${Money.format(cand.amountMinor, code: code)}';
+    return Row(
       children: [
-        Text(title, style: theme.textTheme.titleLarge),
-        const SizedBox(height: 2),
-        Text(
-          c == null
-              ? "Budgetly couldn't read an amount here — type it below."
-              : c.merchant ?? 'Detected from your bank alert',
-          style: theme.textTheme.bodyMedium,
+        IconBadge(
+          size: 44,
+          icon: switch (_mode) {
+            CaptureMode.expense => Icons.north_east_rounded,
+            CaptureMode.income => Icons.south_west_rounded,
+            CaptureMode.transfer => Icons.swap_horiz_rounded,
+          },
+          color: _mode == CaptureMode.income ? c.positive : c.accent,
+        ),
+        const SizedBox(width: AppSpacing.smd),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTextStyles.h3.copyWith(
+                  color: c.textPrimary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                cand == null
+                    ? "Budgetly couldn't read an amount here — type it below."
+                    : cand.merchant ?? 'Detected from your bank alert',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: c.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// A hairline-edged group inside the sheet, for an optional decision (settle,
+/// split) that sits apart from the plain fields.
+class _Panel extends StatelessWidget {
+  const _Panel({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.smd,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: c.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// A read-only field that opens a picker: looks like the text fields around it.
+class _DateField extends StatelessWidget {
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Semantics(
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            suffixIcon: Icon(
+              Icons.event_outlined,
+              size: 20,
+              color: c.textSecondary,
+            ),
+          ),
+          child: Text(
+            value,
+            style: AppTextStyles.body.copyWith(color: c.textPrimary),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -448,18 +583,17 @@ class _TransferHintLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.swap_horiz, size: 18, color: scheme.onSurfaceVariant),
-        const SizedBox(width: AppSpacing.xs),
+        Icon(Icons.info_outline_rounded, size: 18, color: c.info),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
             'Looks like a cash withdrawal — your money moved between your own '
             'accounts. Change it above if not.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
           ),
         ),
       ],

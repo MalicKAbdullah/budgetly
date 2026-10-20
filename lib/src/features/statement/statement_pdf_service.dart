@@ -11,10 +11,11 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-/// Builds a clean black-and-white account statement PDF for a period:
-/// money in / out / net, per-account flow, spending by category, and the
-/// transaction list. Large typography, thin rules — matches the app's mono
-/// theme. All rendered on-device; nothing is uploaded.
+/// Builds an account statement PDF for a period: money in / out / net,
+/// per-account flow, spending by category, and the transaction list. It uses
+/// the app's light palette — graphite ink, hairline rules, cobalt only for
+/// the brand line — so it prints cleanly in greyscale. All rendered
+/// on-device; nothing is uploaded.
 abstract final class StatementPdfService {
   static Future<Uint8List> build({
     required AppData data,
@@ -83,21 +84,28 @@ abstract final class StatementPdfService {
     }
 
     final doc = pw.Document();
-    final black = PdfColors.black;
-    final grey = PdfColors.grey700;
-    final rule = PdfColors.grey400;
+    // Offlyne light tokens: textPrimary, textSecondary, border, hairline,
+    // surfaceAlt, Budgetly accent, positive.
+    const black = PdfColor.fromInt(0xFF0E1116);
+    const grey = PdfColor.fromInt(0xFF5B6371);
+    const rule = PdfColor.fromInt(0xFFE2E5EA);
+    const hairline = PdfColor.fromInt(0xFFE8EBEF);
+    const tint = PdfColor.fromInt(0xFFF6F7F9);
+    const accent = PdfColor.fromInt(0xFF0F62D6);
+    const positive = PdfColor.fromInt(0xFF0E9F55);
 
     pw.Widget bigStat(String label, String value) => pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(
-          label.toUpperCase(),
-          style: pw.TextStyle(fontSize: 9, color: grey, letterSpacing: 1),
-        ),
-        pw.SizedBox(height: 3),
+        pw.Text(label, style: const pw.TextStyle(fontSize: 10, color: grey)),
+        pw.SizedBox(height: 4),
         pw.Text(
           value,
-          style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+          style: pw.TextStyle(
+            fontSize: 20,
+            color: black,
+            fontWeight: pw.FontWeight.bold,
+          ),
         ),
       ],
     );
@@ -117,6 +125,7 @@ abstract final class StatementPdfService {
               left,
               style: pw.TextStyle(
                 fontSize: 11,
+                color: bold ? grey : black,
                 fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
               ),
             ),
@@ -138,9 +147,9 @@ abstract final class StatementPdfService {
       child: pw.Text(
         t,
         style: pw.TextStyle(
-          fontSize: 13,
+          fontSize: 14,
+          color: black,
           fontWeight: pw.FontWeight.bold,
-          letterSpacing: 0.5,
         ),
       ),
     );
@@ -159,11 +168,11 @@ abstract final class StatementPdfService {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    'BUDGETLY',
+                    'Budgetly',
                     style: pw.TextStyle(
-                      fontSize: 10,
-                      color: grey,
-                      letterSpacing: 3,
+                      fontSize: 11,
+                      color: accent,
+                      fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                   pw.SizedBox(height: 4),
@@ -171,6 +180,7 @@ abstract final class StatementPdfService {
                     'Statement',
                     style: pw.TextStyle(
                       fontSize: 30,
+                      color: black,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
@@ -198,21 +208,27 @@ abstract final class StatementPdfService {
             ],
           ),
           pw.SizedBox(height: 20),
-          pw.Divider(color: rule, thickness: 1),
-          pw.SizedBox(height: 16),
-          // Big summary
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              bigStat('Money in', money(income)),
-              bigStat('Money out', money(spent)),
-              bigStat('Net', money(income - spent)),
-            ],
+          // Big summary on a tinted panel, the PDF's one card.
+          pw.Container(
+            padding: const pw.EdgeInsets.all(16),
+            decoration: pw.BoxDecoration(
+              color: tint,
+              border: pw.Border.all(color: hairline),
+              borderRadius: pw.BorderRadius.circular(10),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                bigStat('Money in', money(income)),
+                bigStat('Money out', money(spent)),
+                bigStat('Net', money(income - spent)),
+              ],
+            ),
           ),
           // Savings — a pot reserved across every account, left out of the
           // money in / money out figures above.
           sectionTitle('Savings'),
-          pw.Divider(color: rule, thickness: 0.5),
+          pw.Divider(color: rule, thickness: 0.75),
           row('Position', money(savings.positionMinor)),
           if (savings.hasTarget) ...[
             row('Target', money(savings.targetMinor)),
@@ -237,7 +253,7 @@ abstract final class StatementPdfService {
           // Per-account flow
           if (flows.isNotEmpty) ...[
             sectionTitle('By account'),
-            pw.Divider(color: rule, thickness: 0.5),
+            pw.Divider(color: rule, thickness: 0.75),
             row('Account', 'In      Out', bold: true),
             for (final f in flows)
               pw.Padding(
@@ -252,7 +268,7 @@ abstract final class StatementPdfService {
                     ),
                     pw.Text(
                       '+${money(f.inMinor)}',
-                      style: const pw.TextStyle(fontSize: 11),
+                      style: const pw.TextStyle(fontSize: 11, color: positive),
                     ),
                     pw.SizedBox(width: 16),
                     pw.SizedBox(
@@ -270,13 +286,13 @@ abstract final class StatementPdfService {
           // Spending by category
           if (cats.isNotEmpty) ...[
             sectionTitle('Spending by category'),
-            pw.Divider(color: rule, thickness: 0.5),
+            pw.Divider(color: rule, thickness: 0.75),
             for (final e in cats.take(10)) row(catName(e.key), money(e.value)),
           ],
           // Transactions
           if (txns.isNotEmpty) ...[
             sectionTitle('Transactions'),
-            pw.Divider(color: rule, thickness: 0.5),
+            pw.Divider(color: rule, thickness: 0.75),
             for (final t in txns)
               pw.Padding(
                 padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
@@ -317,7 +333,7 @@ abstract final class StatementPdfService {
           pw.SizedBox(height: 24),
           pw.Text(
             'Generated ${dfLong.format(now)} · Budgetly · offline & private',
-            style: pw.TextStyle(fontSize: 9, color: grey),
+            style: const pw.TextStyle(fontSize: 9, color: grey),
           ),
         ],
       ),

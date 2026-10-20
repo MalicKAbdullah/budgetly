@@ -3,6 +3,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
 import 'package:budgetly/src/core/logic/flow.dart';
@@ -15,6 +16,7 @@ import 'package:budgetly/src/core/widgets/txn_tile.dart';
 import 'package:budgetly/src/features/dashboard/widgets/dashboard_banners.dart';
 import 'package:budgetly/src/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:budgetly/src/features/dashboard/widgets/savings_card.dart';
+import 'package:budgetly/src/features/dashboard/widgets/home_hero.dart';
 import 'package:budgetly/src/features/dashboard/widgets/spend_chart.dart';
 import 'package:budgetly/src/features/statement/statement_pdf_service.dart';
 import 'package:printing/printing.dart';
@@ -27,28 +29,22 @@ class DashboardScreen extends ConsumerWidget {
     final async = ref.watch(appDataProvider);
     final hasAccounts = async.valueOrNull?.accounts.isNotEmpty ?? false;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Budgetly'),
-        actions: [
-          if (hasAccounts)
-            IconButton(
-              tooltip: 'Export statement (PDF)',
-              icon: const Icon(Icons.description_outlined),
-              onPressed: () => _exportStatement(context, ref),
-            ),
-        ],
-      ),
       floatingActionButton: hasAccounts
           ? FloatingActionButton.extended(
               onPressed: () => context.push('/txn/new'),
-              icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add_rounded),
               label: const Text('Transaction'),
             )
           : null,
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load data:\n$e')),
-        data: (data) => _Body(data: data),
+        error: (e, _) => AppEmptyState(
+          icon: Icons.error_outline_rounded,
+          title: 'Could not load your data',
+          message: '$e',
+        ),
+        data: (data) =>
+            _Body(data: data, onExport: () => _exportStatement(context, ref)),
       ),
     );
   }
@@ -75,8 +71,9 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _Body extends ConsumerWidget {
-  const _Body({required this.data});
+  const _Body({required this.data, required this.onExport});
   final AppData data;
+  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -91,115 +88,219 @@ class _Body extends ConsumerWidget {
     final spent = DashboardFlow.spentInRange(data, start, end);
     final income = DashboardFlow.incomeInRange(data, start, end);
     final buckets = DashboardFlow.spendBuckets(data, start, end);
-    final flows = DashboardFlow.byAccount(
-      data,
-      start,
-      end,
-    ).where((f) => f.inMinor > 0 || f.outMinor > 0).toList();
+    final flows = DashboardFlow.byAccount(data, start, end);
     // Budgets stay monthly (a budget is a per-month figure).
     final budgetRows = Budgets.byCategory(
       data,
       month,
     ).where((c) => c.hasBudget || c.spentMinor > 0).toList();
     final recent = [...data.txns]..sort((a, b) => b.date.compareTo(a.date));
+    final today = DateTime(now.year, now.month, now.day);
+    final todayCount = recent.where((t) => !t.date.isBefore(today)).length;
     final people = PeopleLedger.openPositions(data);
+    final c = SuiteColors.of(context);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-        96,
-      ),
-      children: [
-        // Banners and cards that can vanish carry their own bottom gap, so a
-        // hidden one leaves no hole; everything else is spaced by _Section.
-        NotifyTrigger(data: data),
-        const UpdateCard(),
-        const CaptureBanner(),
-        const PeriodFilterBar(),
-        const SizedBox(height: AppSpacing.md),
-        _Section(
-          child: SummaryCard(
-            spentMinor: spent,
-            incomeMinor: income,
-            code: code,
-          ),
-        ),
-        SavingsCard(data: data, code: code),
-        _Section(
-          child: SpendChart(
-            buckets: buckets,
-            title: '${filter.label(now)} · spending',
-            code: code,
-          ),
-        ),
-        AccountFlowCard(flows: flows, code: code),
-        CategoryBreakdown(
-          data: data,
-          start: start,
-          end: end,
-          code: code,
-          onSelect: (categoryId) {
-            // One tap answers "what did I spend this on": narrow every screen
-            // to that category, then land on the list that shows it.
-            ref.read(categoryFilterProvider.notifier).select(categoryId);
-            context.go('/transactions');
-          },
-        ),
-        _Section(
-          child: NetWorthCard(data: data, code: code),
-        ),
-        if (people.isNotEmpty)
-          _Section(
-            child: _PeopleCard(people: people, data: data),
-          ),
-        SectionHeader(
-          title: 'Budgets',
-          actionLabel: 'Manage',
-          onAction: () => context.go('/budgets'),
-        ),
-        _Section(
-          child: budgetRows.isEmpty
-              ? const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(AppSpacing.md),
-                    child: Text('No spending or budgets yet this month.'),
-                  ),
-                )
-              : Card(
-                  child: Column(
-                    children: [
-                      for (final c in budgetRows.take(5))
-                        BudgetRow(spend: c, code: code),
-                    ],
-                  ),
-                ),
-        ),
-        SectionHeader(
-          title: 'Recent',
-          actionLabel: 'All',
-          onAction: () => context.go('/transactions'),
-        ),
-        recent.isEmpty
-            ? const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.md),
-                  child: Text('No transactions yet. Tap + to add one.'),
-                ),
-              )
-            : Card(
-                child: Column(
-                  children: [
-                    for (final t in recent.take(6))
-                      TxnTile(
-                        txn: t,
-                        data: data,
-                        onTap: () => context.push('/txn/${t.id}'),
+    return SafeArea(
+      bottom: false,
+      child: Center(
+        // Wide screens keep the phone's reading measure instead of stretching
+        // every card edge to edge.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              AppSpacing.mdl,
+              AppSpacing.gutter,
+              112,
+            ),
+            children: [
+              // Banners and cards that can vanish carry their own bottom gap,
+              // so a hidden one leaves no hole.
+              NotifyTrigger(data: data),
+              _Header(now: now, onExport: onExport),
+              const SizedBox(height: AppSpacing.lg),
+              const UpdateCard(),
+              const CaptureBanner(),
+              MonthHeroCard(
+                data: data,
+                now: now,
+                onTap: () => context.go('/budgets'),
+              ),
+              const SizedBox(height: AppSpacing.smd),
+              BudgetPair(
+                rows: budgetRows,
+                now: now,
+                code: code,
+                onTap: () => context.go('/budgets'),
+              ),
+              WeekCard(data: data, now: now),
+              const SizedBox(height: AppSpacing.lg),
+              SectionHeader(
+                title: 'Recent',
+                subtitle: todayCount == 0
+                    ? 'Nothing yet today'
+                    : todayCount == 1
+                    ? '1 transaction today'
+                    : '$todayCount transactions today',
+                actionLabel: 'See all',
+                onAction: () => context.go('/transactions'),
+              ),
+              recent.isEmpty
+                  ? const VaultCard(
+                      child: AppEmptyState(
+                        compact: true,
+                        icon: Icons.receipt_long_outlined,
+                        title: 'No transactions yet',
+                        message: 'Tap Transaction to add your first one.',
                       ),
-                  ],
+                    )
+                  : RowGroup(
+                      children: [
+                        for (final t in recent.take(4))
+                          TxnTile(
+                            txn: t,
+                            data: data,
+                            onTap: () => context.push('/txn/${t.id}'),
+                          ),
+                      ],
+                    ),
+              if (people.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.smd),
+                _PeopleCard(people: people, data: data),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              SectionHeader(
+                title: 'Where it went',
+                subtitle: filter.label(now),
+              ),
+              const PeriodFilterBar(),
+              const SizedBox(height: AppSpacing.smd),
+              SummaryCard(spentMinor: spent, incomeMinor: income, code: code),
+              const SizedBox(height: AppSpacing.smd),
+              CategoryBreakdown(
+                data: data,
+                start: start,
+                end: end,
+                code: code,
+                onSelect: (categoryId) {
+                  // One tap answers "what did I spend this on": narrow every
+                  // screen to that category, then land on the list.
+                  ref.read(categoryFilterProvider.notifier).select(categoryId);
+                  context.go('/transactions');
+                },
+              ),
+              const SizedBox(height: AppSpacing.smd),
+              SpendChart(
+                buckets: buckets,
+                title: 'Spending by ${_bucketNoun(start, end)}',
+                unit: 'per ${_bucketNoun(start, end)}',
+                code: code,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SectionHeader(
+                title: 'Money',
+                actionLabel: 'Accounts',
+                onAction: () => context.push('/accounts'),
+              ),
+              SavingsCard(data: data, code: code),
+              AccountsCard(
+                data: data,
+                flows: flows,
+                code: code,
+                onTap: () => context.push('/accounts'),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SectionHeader(
+                title: 'Budgets',
+                subtitle: DateFormat.MMMM().format(month),
+                actionLabel: 'Manage',
+                onAction: () => context.go('/budgets'),
+              ),
+              budgetRows.isEmpty
+                  ? const VaultCard(
+                      child: AppEmptyState(
+                        compact: true,
+                        icon: Icons.donut_large_rounded,
+                        title: 'No budgets yet',
+                        message: 'Set a monthly budget to see what is left.',
+                      ),
+                    )
+                  : RowGroup(
+                      children: [
+                        for (final row in budgetRows.take(5))
+                          BudgetRow(spend: row, code: code),
+                      ],
+                    ),
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.lg),
+                child: Text(
+                  'Everything stays on this phone.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.caption.copyWith(color: c.textTertiary),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// What one bar of the spending chart stands for.
+  static String _bucketNoun(DateTime start, DateTime end) {
+    final days = end.difference(start).inDays + 1;
+    if (days <= 62) return 'day';
+    if (days <= 36 * 31) return 'month';
+    return 'year';
+  }
+}
+
+/// Date eyebrow, greeting and the statement export.
+class _Header extends StatelessWidget {
+  const _Header({required this.now, required this.onExport});
+  final DateTime now;
+  final VoidCallback onExport;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    final greeting = now.hour < 12
+        ? 'Good morning'
+        : now.hour < 17
+        ? 'Good afternoon'
+        : 'Good evening';
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DateFormat('EEEE, d MMMM').format(now),
+                style: AppTextStyles.label.copyWith(color: c.textSecondary),
+              ),
+              const SizedBox(height: 2),
+              Semantics(
+                header: true,
+                child: Text(
+                  greeting,
+                  style: AppTextStyles.h2.copyWith(color: c.textPrimary),
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton.filledTonal(
+          tooltip: 'Export statement (PDF)',
+          style: IconButton.styleFrom(
+            backgroundColor: c.surfaceAlt,
+            foregroundColor: c.textPrimary,
+            minimumSize: const Size(48, 48),
+          ),
+          icon: const Icon(Icons.ios_share_rounded, size: 20),
+          onPressed: onExport,
+        ),
       ],
     );
   }
@@ -213,7 +314,7 @@ class _PeopleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     final code = data.currencyCode;
     final owed = PeopleLedger.totalOwedToYouMinor(data);
     final owe = PeopleLedger.totalYouOweMinor(data);
@@ -222,21 +323,18 @@ class _PeopleCard extends StatelessWidget {
       if (owe > 0) 'you owe ${Money.format(owe, code: code)}',
     ].join(' · ');
 
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: scheme.primary.withValues(alpha: 0.12),
-          child: Icon(Icons.handshake_outlined, color: scheme.primary),
-        ),
-        title: Text(
-          people.length == 1
+    return RowGroup(
+      children: [
+        AppListRow(
+          leading: IconBadge(icon: Icons.handshake_outlined, color: c.accent),
+          title: people.length == 1
               ? 'Settle up with ${people.first.name}'
               : 'Settle up with ${people.length} people',
+          subtitle: subtitle,
+          showChevron: true,
+          onTap: () => context.push('/people'),
         ),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => context.push('/people'),
-      ),
+      ],
     );
   }
 }
@@ -246,48 +344,41 @@ class _EmptyAccounts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    final c = SuiteColors.of(context);
+    return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.account_balance_wallet_outlined, size: 56),
-            const SizedBox(height: AppSpacing.md),
+            const Spacer(),
+            const SuiteAppIcon(app: SuiteApp.budgetly, size: 72),
+            const SizedBox(height: AppSpacing.lg),
             Text(
-              'Add your first account',
-              style: Theme.of(context).textTheme.titleMedium,
+              'Welcome to Budgetly',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.h1.copyWith(color: c.textPrimary),
             ),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'Create Cash, your bank, or a wallet to start tracking where '
-              'your money goes.',
-              textAlign: TextAlign.center,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 340),
+              child: Text(
+                'Add Cash, your bank or a wallet to start tracking where your '
+                'money goes. Everything stays on this phone.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.body.copyWith(color: c.textSecondary),
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            FilledButton.icon(
+            const SizedBox(height: AppSpacing.xl),
+            VaultButton(
+              label: 'Add account',
+              icon: Icons.add_rounded,
               onPressed: () => context.push('/accounts'),
-              icon: const Icon(Icons.add),
-              label: const Text('Add account'),
             ),
+            const Spacer(),
+            const SuiteEndorsement(),
           ],
         ),
       ),
     );
   }
-}
-
-/// One dashboard block plus the gap beneath it. Sections that can disappear
-/// (banners, empty cards) carry their own gap instead, so a hidden section
-/// never leaves a hole in the column.
-class _Section extends StatelessWidget {
-  const _Section({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: AppSpacing.md),
-    child: child,
-  );
 }

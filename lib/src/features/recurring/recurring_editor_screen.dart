@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -132,29 +133,43 @@ class _State extends ConsumerState<RecurringEditorScreen> {
           if (_existing != null)
             IconButton(
               onPressed: _delete,
-              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete',
+              icon: const Icon(Icons.delete_outline_rounded),
             ),
         ],
       ),
       body: accounts.isEmpty
-          ? const Center(child: Text('Add an account first (Settings).'))
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.xl),
+                child: AppEmptyState(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'No accounts yet',
+                  message: 'Add an account first (Settings).',
+                ),
+              ),
+            )
           : ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                AppSpacing.sm,
+                AppSpacing.gutter,
+                AppSpacing.xl,
+              ),
               children: [
                 TxnTypeSelector(
                   value: _type,
                   onChanged: (t) => setState(() => _type = t),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                TextField(
+                const SizedBox(height: AppSpacing.lg),
+                AppTextField(
                   controller: _amount,
+                  label: 'Amount',
+                  prefixText: Money.symbol(data?.currencyCode ?? 'PKR'),
+                  errorText: _error,
+                  textStyle: AppTextStyles.numberMedium,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Amount',
-                    prefixText: '${data?.currencyCode ?? 'PKR'} ',
-                    errorText: _error,
                   ),
                   onChanged: (_) => setState(() => _error = null),
                 ),
@@ -203,32 +218,43 @@ class _State extends ConsumerState<RecurringEditorScreen> {
                     onChanged: (v) => setState(() => _categoryId = v),
                   ),
                 ],
-                const SizedBox(height: AppSpacing.md),
-                DropdownButtonFormField<RecurringInterval>(
-                  isExpanded: true,
-                  initialValue: _interval,
-                  decoration: const InputDecoration(labelText: 'Repeats'),
-                  items: [
-                    for (final i in RecurringInterval.values)
-                      DropdownMenuItem(value: i, child: Text(i.label)),
-                  ],
-                  onChanged: (v) => setState(() => _interval = v ?? _interval),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.event_outlined),
-                  title: const Text('Starts / next run'),
-                  trailing: Text(DateFormat.yMMMd().format(_start)),
-                  onTap: _pickStart,
-                ),
-                TextField(
-                  controller: _note,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Repeats',
+                  style: AppTextStyles.labelStrong.copyWith(
+                    color: SuiteColors.of(context).textPrimary,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                FilledButton(onPressed: _save, child: const Text('Save')),
+                const SizedBox(height: AppSpacing.sm),
+                AppSegmentedControl<RecurringInterval>(
+                  height: 48,
+                  segments: [
+                    for (final i in RecurringInterval.values)
+                      AppSegment(value: i, label: i.label),
+                  ],
+                  selected: _interval,
+                  onChanged: (v) => setState(() => _interval = v),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                RowGroup(
+                  children: [
+                    AppListRow(
+                      leading: const IconBadge(icon: Icons.event_outlined),
+                      title: 'Starts / next run',
+                      trailing: Text(
+                        DateFormat.yMMMd().format(_start),
+                        style: AppTextStyles.labelStrong.copyWith(
+                          color: SuiteColors.of(context).accent,
+                        ),
+                      ),
+                      onTap: _pickStart,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(controller: _note, label: 'Note (optional)'),
+                const SizedBox(height: AppSpacing.xl),
+                VaultButton(label: 'Save', onPressed: _save),
               ],
             ),
     );

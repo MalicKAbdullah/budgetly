@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
@@ -16,6 +17,7 @@ Future<Person?> showPersonPicker(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
+  showDragHandle: true,
   builder: (_) => _PersonPickerSheet(exclude: exclude),
 );
 
@@ -52,21 +54,20 @@ class _PersonPickerSheetState extends ConsumerState<_PersonPickerSheet> {
         .where((p) => query.isEmpty || p.nameKey.contains(query))
         .toList();
     final exactMatch = data.personByName(_name.text) != null;
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
 
     return Padding(
       padding: EdgeInsets.only(
-        left: AppSpacing.md,
-        right: AppSpacing.md,
-        top: AppSpacing.md,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+        left: AppSpacing.gutter,
+        right: AppSpacing.gutter,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
       ),
       child: ListView(
         shrinkWrap: true,
         children: [
           Text(
             'Who is on this split?',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: AppTextStyles.h3.copyWith(color: c.textPrimary),
           ),
           const SizedBox(height: AppSpacing.md),
           TextField(
@@ -76,17 +77,18 @@ class _PersonPickerSheetState extends ConsumerState<_PersonPickerSheet> {
             decoration: const InputDecoration(
               labelText: 'Name',
               hintText: 'e.g. Ali',
-              prefixIcon: Icon(Icons.person_outline),
+              prefixIcon: Icon(Icons.search_rounded, size: 20),
             ),
             onChanged: (_) => setState(() {}),
             onSubmitted: (_) => exactMatch ? null : _addTyped(data),
           ),
           if (_name.text.trim().isNotEmpty && !exactMatch) ...[
             const SizedBox(height: AppSpacing.sm),
-            FilledButton.tonalIcon(
+            VaultButton(
               onPressed: () => _addTyped(data),
-              icon: const Icon(Icons.person_add_alt),
-              label: Text('Add "${_name.text.trim()}"'),
+              icon: Icons.person_add_alt_rounded,
+              variant: VaultButtonVariant.secondary,
+              label: 'Add "${_name.text.trim()}"',
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
@@ -97,18 +99,26 @@ class _PersonPickerSheetState extends ConsumerState<_PersonPickerSheet> {
                 data.people.isEmpty
                     ? 'Nobody added yet — type a name above.'
                     : 'No other person matches.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
               ),
             )
           else
-            for (final p in available)
-              ListTile(
-                leading: const Icon(Icons.person_outline),
-                title: Text(p.name),
-                onTap: () => Navigator.pop(context, p),
-              ),
+            RowGroup(
+              children: [
+                for (final p in available)
+                  AppListRow(
+                    dense: true,
+                    leading: IconBadge(
+                      monogram: p.name.trim().isEmpty
+                          ? '?'
+                          : p.name.trim()[0].toUpperCase(),
+                      size: 36,
+                    ),
+                    title: p.name,
+                    onTap: () => Navigator.pop(context, p),
+                  ),
+              ],
+            ),
         ],
       ),
     );

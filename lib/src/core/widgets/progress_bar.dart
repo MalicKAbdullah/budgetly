@@ -1,31 +1,19 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
-/// The app's one progress-bar look: a slim rounded track that eases to its
-/// value, so a budget filling up reads as movement rather than a jump.
+/// The app's one progress-bar look: the suite bar, which eases to its value
+/// and shows an over-budget overflow past 1.
 class ProgressBar extends StatelessWidget {
-  const ProgressBar({required this.value, this.color, super.key});
+  const ProgressBar({required this.value, this.color, this.marker, super.key});
 
-  /// 0..1; values past 1 (over budget) draw a full bar.
+  /// 0..1; values past 1 (over budget) draw the overflow state.
   final double value;
   final Color? color;
 
+  /// Where "on pace" sits (0..1), e.g. the share of the month gone.
+  final double? marker;
+
   @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(end: value.clamp(0, 1).toDouble()),
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOutCubic,
-        builder: (context, v, _) => LinearProgressIndicator(
-          value: v,
-          minHeight: 6,
-          backgroundColor: Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest,
-          color: color,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      AppProgressBar(value: value, color: color, marker: marker);
 }

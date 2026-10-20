@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -25,6 +26,7 @@ Future<void> showSettleSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    showDragHandle: true,
     builder: (_) => _SettleForm(
       position: position,
       kind: kind,
@@ -116,77 +118,125 @@ class _SettleFormState extends State<_SettleForm> {
 
   @override
   Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
     final name = widget.position.name;
+    final trimmed = name.trim();
     return Padding(
       padding: EdgeInsets.only(
-        left: AppSpacing.md,
-        right: AppSpacing.md,
-        top: AppSpacing.md,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+        bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: ListView(
-        shrinkWrap: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            _receiving ? '$name pays you back' : 'You pay $name back',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Clears the oldest debt first. Not counted as '
-            '${_receiving ? 'income' : 'spending'}.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: _amount,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: _receiving ? 'Amount received' : 'Amount paid',
-              prefixText: '${widget.code} ',
-              errorText: _error,
-            ),
-            onChanged: (_) => setState(() => _error = null),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: _accountId,
-            decoration: InputDecoration(
-              labelText: _receiving ? 'Into account' : 'From account',
-            ),
-            items: [
-              for (final a in widget.accounts)
-                DropdownMenuItem(value: a.id, child: Text(a.name)),
-            ],
-            onChanged: (v) => setState(() => _accountId = v ?? _accountId),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          InputDecorator(
-            decoration: const InputDecoration(labelText: 'Settled on'),
-            child: InkWell(
-              onTap: _pickDate,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                0,
+                AppSpacing.gutter,
+                AppSpacing.lg,
+              ),
+              children: [
+                Row(
                   children: [
-                    Text(DateFormat.yMMMMd().format(_date)),
-                    const Icon(Icons.calendar_today_outlined, size: 20),
+                    IconBadge(
+                      monogram: trimmed.isEmpty
+                          ? '?'
+                          : trimmed[0].toUpperCase(),
+                      color: _receiving ? c.positive : c.negative,
+                      size: 44,
+                    ),
+                    const SizedBox(width: AppSpacing.smd),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _receiving
+                                ? '$name pays you back'
+                                : 'You pay $name back',
+                            style: AppTextStyles.h3.copyWith(
+                              color: c.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Clears the oldest debt first. Not counted as '
+                            '${_receiving ? 'income' : 'spending'}.',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: c.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
+                const SizedBox(height: AppSpacing.mdl),
+                AppTextField(
+                  controller: _amount,
+                  autofocus: true,
+                  clearable: false,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  label: _receiving ? 'Amount received' : 'Amount paid',
+                  prefixText: Money.symbol(widget.code),
+                  errorText: _error,
+                  textStyle: AppTextStyles.numberMedium.copyWith(
+                    color: c.textPrimary,
+                  ),
+                  onChanged: (_) => setState(() => _error = null),
+                ),
+                const SizedBox(height: AppSpacing.smd),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: _accountId,
+                  decoration: InputDecoration(
+                    labelText: _receiving ? 'Into account' : 'From account',
+                  ),
+                  items: [
+                    for (final a in widget.accounts)
+                      DropdownMenuItem(value: a.id, child: Text(a.name)),
+                  ],
+                  onChanged: (v) =>
+                      setState(() => _accountId = v ?? _accountId),
+                ),
+                const SizedBox(height: AppSpacing.smd),
+                Semantics(
+                  button: true,
+                  child: InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Settled on',
+                        suffixIcon: Icon(
+                          Icons.event_outlined,
+                          size: 20,
+                          color: c.textSecondary,
+                        ),
+                      ),
+                      child: Text(
+                        DateFormat.yMMMMd().format(_date),
+                        style: AppTextStyles.body.copyWith(
+                          color: c.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          FilledButton(
-            onPressed: _submit,
-            child: const Text('Record settlement'),
+          BottomActionBar(
+            primary: VaultButton(
+              onPressed: _submit,
+              label: 'Record settlement',
+            ),
           ),
-          const SizedBox(height: AppSpacing.sm),
         ],
       ),
     );
