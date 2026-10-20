@@ -38,6 +38,7 @@ class TxnTile extends StatelessWidget {
         : null;
 
     final meta = [
+      ?peopleLine,
       data.accountById(txn.accountId)?.name ?? '',
       DateFormat.MMMd().format(txn.date),
       if (txn.note.isNotEmpty && txn.type != TxnType.income) txn.note,
@@ -80,17 +81,11 @@ class TxnTile extends StatelessWidget {
                       if (splitLine != null)
                         Text(
                           splitLine,
-                          maxLines: 2,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.bodySmall.copyWith(
                             color: c.textPrimary,
                           ),
-                        ),
-                      if (peopleLine != null)
-                        Text(
-                          peopleLine,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: secondary,
                         ),
                       if (txn.isSettlement)
                         Text(
