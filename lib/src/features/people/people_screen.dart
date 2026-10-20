@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/people.dart';
-import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/widgets/money_text.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/features/people/person_edit.dart';
@@ -29,67 +28,71 @@ class PeopleScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('People')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showAddPersonDialog(context, ref),
-        icon: const Icon(Icons.person_add_alt),
-        label: const Text('Add person'),
-      ),
+      // The empty state carries its own Add action.
+      floatingActionButton: open.isEmpty && settled.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => showAddPersonDialog(context, ref),
+              icon: const Icon(Icons.person_add_alt_rounded),
+              label: const Text('Add person'),
+            ),
       body: open.isEmpty && settled.isEmpty
-          ? const _Empty()
+          ? _Empty(onAdd: () => showAddPersonDialog(context, ref))
           : ListView(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                96,
+                AppSpacing.gutter,
+                AppSpacing.sm,
+                AppSpacing.gutter,
+                112,
               ),
               children: [
                 _TotalsCard(
                   owedToYouMinor: PeopleLedger.totalOwedToYouMinor(data),
                   youOweMinor: PeopleLedger.totalYouOweMinor(data),
+                  openCount: open.length,
                   code: code,
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.lg),
+                SectionHeader(
+                  title: 'Open balances',
+                  subtitle: open.isEmpty
+                      ? null
+                      : 'Biggest first · long-press to rename or remove',
+                ),
                 if (open.isEmpty)
-                  const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(AppSpacing.md),
-                      child: Text('Everyone is square. Nothing to settle.'),
+                  const VaultCard(
+                    child: AppEmptyState(
+                      compact: true,
+                      icon: Icons.handshake_outlined,
+                      title: 'Everyone is square',
+                      message: 'Nothing to settle.',
                     ),
                   )
                 else
-                  Card(
-                    child: Column(
-                      children: [
-                        for (final p in open)
-                          PersonRow(
-                            position: p,
-                            code: code,
-                            onTap: () => context.push(_route(p)),
-                            onManage: () => _manage(context, ref, data, p),
-                          ),
-                      ],
-                    ),
+                  RowGroup(
+                    children: [
+                      for (final p in open)
+                        PersonRow(
+                          position: p,
+                          code: code,
+                          onTap: () => context.push(_route(p)),
+                          onManage: () => _manage(context, ref, data, p),
+                        ),
+                    ],
                   ),
                 if (settled.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'No open balance',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Card(
-                    child: Column(
-                      children: [
-                        for (final p in settled)
-                          PersonRow(
-                            position: p,
-                            code: code,
-                            onTap: () => context.push(_route(p)),
-                            onManage: () => _manage(context, ref, data, p),
-                          ),
-                      ],
-                    ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const SectionHeader(title: 'No open balance'),
+                  RowGroup(
+                    children: [
+                      for (final p in settled)
+                        PersonRow(
+                          position: p,
+                          code: code,
+                          onTap: () => context.push(_route(p)),
+                          onManage: () => _manage(context, ref, data, p),
+                        ),
+                    ],
                   ),
                 ],
               ],
@@ -117,17 +120,21 @@ Future<void> _manage(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            leading: const Icon(Icons.edit_outlined),
-            title: const Text('Rename'),
+          const SizedBox(height: AppSpacing.xs),
+          AppListRow(
+            leading: const IconBadge(icon: Icons.edit_outlined),
+            title: 'Rename ${person.name}',
             onTap: () {
               Navigator.pop(sheetContext);
               showRenamePersonDialog(context, ref, person);
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline),
-            title: const Text('Delete'),
+          AppListRow(
+            leading: IconBadge(
+              icon: Icons.delete_outline_rounded,
+              color: SuiteColors.of(sheetContext).negative,
+            ),
+            title: 'Delete',
             onTap: () {
               Navigator.pop(sheetContext);
               confirmDeletePerson(context, ref, person);
@@ -159,33 +166,32 @@ class PersonRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     final net = position.netMinor;
-    final owedColor = scheme.primary;
-    final oweColor = AppColors.warning(Theme.of(context).brightness);
     final (line, color) = switch (net) {
-      > 0 => ('${position.name} owes you', owedColor),
-      < 0 => ('You owe ${position.name}', oweColor),
-      _ => ('Settled up', scheme.onSurfaceVariant),
+      > 0 => ('Owes you', c.positive),
+      < 0 => ('You owe them', c.negative),
+      _ => ('Settled up', null),
     };
 
-    return ListTile(
+    return AppListRow(
       onTap: onTap,
       onLongPress: onManage,
-      leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.15),
-        child: Text(
-          _initial(position.name),
-          style: TextStyle(color: color, fontWeight: FontWeight.bold),
-        ),
-      ),
-      title: Text(position.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(line, maxLines: 1, overflow: TextOverflow.ellipsis),
+      leading: IconBadge(monogram: _initial(position.name), color: color),
+      title: position.name,
+      subtitle: line,
+      showChevron: net == 0,
       trailing: net == 0
-          ? Icon(Icons.check, color: scheme.onSurfaceVariant)
-          : MoneyTrailing(
-              amount: Money.format(net.abs(), code: code),
-              color: color,
+          ? null
+          : ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 140),
+              child: AmountText(
+                net.abs(),
+                code: code,
+                style: AppTextStyles.number,
+                color: color,
+                alignment: AlignmentDirectional.centerEnd,
+              ),
             ),
     );
   }
@@ -198,59 +204,114 @@ class _TotalsCard extends StatelessWidget {
   const _TotalsCard({
     required this.owedToYouMinor,
     required this.youOweMinor,
+    required this.openCount,
     required this.code,
   });
 
   final int owedToYouMinor;
   final int youOweMinor;
+  final int openCount;
   final String code;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final warn = AppColors.warning(Theme.of(context).brightness);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final c = SuiteColors.of(context);
+    final net = owedToYouMinor - youOweMinor;
+    Widget side(String label, int minor, Color color) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Expanded(
-              child: StatTile(
-                label: 'Owed to you',
-                value: Money.format(owedToYouMinor, code: code),
-                valueColor: scheme.primary,
-              ),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: StatTile(
-                label: 'You owe',
-                value: Money.format(youOweMinor, code: code),
-                valueColor: warn,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.label.copyWith(color: c.textSecondary),
               ),
             ),
           ],
         ),
+        const SizedBox(height: AppSpacing.xs),
+        AmountText(minor, code: code, style: AppTextStyles.numberMedium),
+      ],
+    );
+    return VaultCard(
+      radius: AppSpacing.radiusXl,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            net >= 0 ? 'Net owed to you' : 'Net you owe',
+            style: AppTextStyles.label.copyWith(color: c.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AmountText(
+            net.abs(),
+            code: code,
+            style: AppTextStyles.numberLarge.copyWith(fontSize: 44),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            openCount == 0
+                ? 'Nobody has an open balance'
+                : openCount == 1
+                ? 'Across 1 person'
+                : 'Across $openCount people',
+            style: AppTextStyles.bodySmall.copyWith(color: c.textTertiary),
+          ),
+          const SizedBox(height: AppSpacing.mdl),
+          Divider(height: 1, color: c.hairline),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(child: side('Owed to you', owedToYouMinor, c.positive)),
+              // A fixed rule: the figures measure themselves with a
+              // LayoutBuilder, which cannot report an intrinsic height.
+              Container(
+                width: 1,
+                height: 48,
+                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                color: c.hairline,
+              ),
+              Expanded(child: side('You owe', youOweMinor, c.negative)),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
 class _Empty extends StatelessWidget {
-  const _Empty();
+  const _Empty({required this.onAdd});
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(AppSpacing.xl),
-        child: Text(
-          'Nobody here yet. Add the people you share bills with, then split an '
-          'expense — either "they owe me back" or "someone paid for me" — and '
-          'their balance shows up here until you settle up.\n\n'
-          'Long-press anyone to rename or remove them.',
-          textAlign: TextAlign.center,
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: AppEmptyState(
+          icon: Icons.group_outlined,
+          title: 'Nobody here yet',
+          message:
+              'Add the people you share bills with, then split an expense — '
+              'either "they owe me back" or "someone paid for me" — and '
+              'their balance shows up here until you settle up. '
+              'Long-press anyone to rename or remove them.',
+          action: VaultButton(
+            label: 'Add person',
+            icon: Icons.person_add_alt_rounded,
+            isFullWidth: false,
+            onPressed: onAdd,
+          ),
         ),
       ),
     );

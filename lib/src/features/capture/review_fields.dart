@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/models/account.dart';
 import 'package:budgetly/src/core/models/category.dart';
@@ -17,14 +18,13 @@ class CaptureModeSelector extends StatelessWidget {
   final ValueChanged<CaptureMode> onChanged;
 
   @override
-  Widget build(BuildContext context) => SegmentedButton<CaptureMode>(
+  Widget build(BuildContext context) => AppSegmentedControl<CaptureMode>(
+    height: 44,
     segments: [
-      for (final m in CaptureMode.values)
-        ButtonSegment(value: m, label: Text(m.label)),
+      for (final m in CaptureMode.values) AppSegment(value: m, label: m.label),
     ],
-    selected: {mode},
-    showSelectedIcon: false,
-    onSelectionChanged: (s) => onChanged(s.first),
+    selected: mode,
+    onChanged: onChanged,
   );
 }
 
@@ -95,20 +95,34 @@ class CapturedRawText extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppSpacing.sm),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      text,
-      // onSurface, not the container's own "on" colour: an earlier card lost
-      // its text into its background in one of the two themes.
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: Theme.of(context).colorScheme.onSurface,
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.smd + 2),
+      decoration: BoxDecoration(
+        color: c.surfaceAlt,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
       ),
-    ),
-  );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'FROM YOUR ALERT',
+            style: AppTextStyles.overline.copyWith(color: c.textTertiary),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            text,
+            // Primary text, not a tinted "on container" colour: an earlier
+            // card lost its text into its background in one of the themes.
+            style: AppTextStyles.bodySmall.copyWith(
+              color: c.textPrimary,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
