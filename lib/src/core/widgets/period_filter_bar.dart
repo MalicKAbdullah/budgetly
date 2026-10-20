@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgetly/src/core/models/period_filter.dart';
@@ -22,21 +23,19 @@ class PeriodFilterBar extends ConsumerWidget {
       child: Row(
         children: [
           for (final p in PeriodPreset.values) ...[
-            ChoiceChip(
+            AppChip(
               // The custom chip shows the chosen dates only while a custom
               // range is actually active — `filter.label` falls back to the
               // active preset's name, which otherwise renders a second chip
               // reading e.g. "This month" right beside the real one.
-              label: Text(
-                p == PeriodPreset.custom && filter.preset == PeriodPreset.custom
-                    ? filter.label(now)
-                    : p.label,
-              ),
-              avatar: p == PeriodPreset.custom
-                  ? const Icon(Icons.date_range, size: 18)
-                  : null,
+              label:
+                  p == PeriodPreset.custom &&
+                      filter.preset == PeriodPreset.custom
+                  ? filter.label(now)
+                  : p.label,
+              icon: p == PeriodPreset.custom ? Icons.date_range_rounded : null,
               selected: filter.preset == p,
-              onSelected: (_) => _select(context, ref, p, filter),
+              onTap: () => _select(context, ref, p, filter),
             ),
             const SizedBox(width: AppSpacing.sm),
           ],

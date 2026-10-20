@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,10 +74,10 @@ void main() {
     // Starts on the default window — and exactly one chip says so. The
     // custom chip used to echo the active preset's label, putting a second
     // identical "This month" chip right next to the real one.
-    expect(find.widgetWithText(ChoiceChip, 'This month'), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, 'Custom range'), findsOneWidget);
+    expect(find.widgetWithText(AppChip, 'This month'), findsOneWidget);
+    expect(find.widgetWithText(AppChip, 'Custom range'), findsOneWidget);
 
-    final chip = find.widgetWithText(ChoiceChip, 'This year');
+    final chip = find.widgetWithText(AppChip, 'This year');
     await tester.ensureVisible(chip);
     await tester.tap(chip);
     await tester.pumpAndSettle();

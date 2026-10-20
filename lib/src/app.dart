@@ -15,10 +15,7 @@ class BudgetlyApp extends ConsumerWidget {
       title: 'Budgetly',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(Brightness.light, accent: AppAccents.budgetly),
-      darkTheme: AppTheme.build(
-        Brightness.dark,
-        accent: AppAccents.budgetly,
-      ),
+      darkTheme: AppTheme.build(Brightness.dark, accent: AppAccents.budgetly),
       themeMode: ThemeMode.system,
       routerConfig: ref.watch(routerProvider),
       // App-lock cover sits above the router; the navigator stays mounted
