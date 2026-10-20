@@ -182,7 +182,13 @@ void main() {
     await tester.pumpAndSettle();
 
     // File it under Food, then open the split: the whole payment starts there.
-    await tapVisible(tester, find.byType(DropdownButtonFormField<String?>));
+    await tapVisible(
+      tester,
+      find.ancestor(
+        of: find.text('Category'),
+        matching: find.byType(AppSelectField<String?>),
+      ),
+    );
     await tester.tap(find.text('Food').last);
     await tester.pumpAndSettle();
     await tapVisible(tester, find.text('Split this payment'));

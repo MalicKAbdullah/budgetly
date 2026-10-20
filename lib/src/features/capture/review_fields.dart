@@ -28,7 +28,7 @@ class CaptureModeSelector extends StatelessWidget {
   );
 }
 
-/// One account dropdown. Used on its own for expense/income and twice, as
+/// One account picker. Used on its own for expense/income and twice, as
 /// From and To, for a transfer.
 class AccountPicker extends StatelessWidget {
   const AccountPicker({
@@ -47,15 +47,14 @@ class AccountPicker extends StatelessWidget {
   final String? errorText;
 
   @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String>(
-    isExpanded: true,
-    initialValue: accounts.any((a) => a.id == value) ? value : null,
-    decoration: InputDecoration(labelText: label, errorText: errorText),
-    items: [
+  Widget build(BuildContext context) => AppSelectField<String?>(
+    label: label,
+    value: value,
+    errorText: errorText,
+    options: [
       // Just the name: an account called "Cash" of type Cash would otherwise
       // read "Cash · Cash".
-      for (final a in accounts)
-        DropdownMenuItem(value: a.id, child: Text(a.name)),
+      for (final a in accounts) AppSelectOption(value: a.id, label: a.name),
     ],
     onChanged: onChanged,
   );
@@ -76,14 +75,12 @@ class CategoryPicker extends StatelessWidget {
   final ValueChanged<String?> onChanged;
 
   @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String?>(
-    isExpanded: true,
-    initialValue: value,
-    decoration: const InputDecoration(labelText: 'Category'),
-    items: [
-      const DropdownMenuItem(value: null, child: Text('Uncategorized')),
-      for (final c in categories)
-        DropdownMenuItem(value: c.id, child: Text(c.name)),
+  Widget build(BuildContext context) => AppSelectField<String?>(
+    label: 'Category',
+    value: value,
+    options: [
+      const AppSelectOption(value: null, label: 'Uncategorized'),
+      for (final c in categories) AppSelectOption(value: c.id, label: c.name),
     ],
     onChanged: onChanged,
   );

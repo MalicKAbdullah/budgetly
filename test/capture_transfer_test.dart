@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:core_storage/core_storage.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -172,7 +173,7 @@ void main() {
     await tester.tap(
       find.ancestor(
         of: find.text('From account'),
-        matching: find.byType(DropdownButtonFormField<String>),
+        matching: find.byType(AppSelectField<String?>),
       ),
     );
     await tester.pumpAndSettle();
