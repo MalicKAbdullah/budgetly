@@ -72,108 +72,113 @@ class _Body extends ConsumerWidget {
     final p = Savings.position(data);
     final window = Savings.period(data, start, end);
     final loans = Savings.openLoans(data);
-    final text = Theme.of(context).textTheme;
-    final brightness = Theme.of(context).brightness;
+    final c = SuiteColors.of(context);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-        96,
+        AppSpacing.gutter,
+        AppSpacing.sm,
+        AppSpacing.gutter,
+        AppSpacing.xxl,
       ),
       children: [
         const PeriodFilterBar(),
         const SizedBox(height: AppSpacing.md),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: StatTile(
-                        label: p.hasTarget ? 'Free to spend' : 'Holding',
-                        value: Money.format(
-                          p.hasTarget ? p.freeToSpendMinor : p.positionMinor,
-                          code: code,
-                        ),
-                        valueColor: p.isDipping
-                            ? AppColors.warning(brightness)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: StatTile(
-                        label: 'Holding',
-                        value: Money.format(p.positionMinor, code: code),
-                        caption: p.countedReceivablesMinor > 0
-                            ? 'incl. ${Money.format(p.countedReceivablesMinor, code: code)} lent'
-                            : null,
-                      ),
-                    ),
-                  ],
+        VaultCard(
+          radius: AppSpacing.radiusXl,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                p.hasTarget ? 'Free to spend' : 'Holding',
+                style: AppTextStyles.label.copyWith(color: c.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.smd),
+              AmountText(
+                p.hasTarget ? p.freeToSpendMinor : p.positionMinor,
+                code: code,
+                style: AppTextStyles.display,
+                color: p.isDipping ? c.warning : null,
+              ),
+              const SizedBox(height: AppSpacing.mdl),
+              SavingsProgress(position: p, code: code),
+              if (p.isDipping) ...[
+                const SizedBox(height: AppSpacing.smd),
+                SavingsDipWarning(
+                  shortfallMinor: -p.freeToSpendMinor,
+                  code: code,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                SavingsProgress(position: p, code: code),
-                if (p.isDipping) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  SavingsDipWarning(
-                    shortfallMinor: -p.freeToSpendMinor,
-                    code: code,
+              ],
+              const SizedBox(height: AppSpacing.mdl),
+              Divider(height: 1, color: c.hairline),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: StatTile(
+                      label: 'Holding',
+                      value: Money.format(p.positionMinor, code: code),
+                      caption: p.countedReceivablesMinor > 0
+                          ? 'incl. ${Money.format(p.countedReceivablesMinor, code: code)} lent'
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: StatTile(
+                      label: 'Target',
+                      value: p.hasTarget
+                          ? Money.format(p.targetMinor, code: code)
+                          : 'Not set',
+                    ),
                   ),
                 ],
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.smd),
         _PeriodCard(window: window, label: filter.label(now), code: code),
-        const SizedBox(height: AppSpacing.md),
-        SectionHeader(title: 'Money lent out'),
+        const SizedBox(height: AppSpacing.lg),
+        SectionHeader(
+          title: 'Money lent out',
+          subtitle: loans.isEmpty
+              ? null
+              : 'Counted ${Money.format(p.countedReceivablesMinor, code: code)} · '
+                    'not counted '
+                    '${Money.format(p.uncountedReceivablesMinor, code: code)}. '
+                    'Switch one on when you are only passing it through '
+                    'for someone.',
+        ),
         if (loans.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
-              child: Text(
-                'Nothing is owed to you right now. When you front money for '
-                'someone it appears here, and you choose whether it still '
-                'counts as yours.',
-              ),
+          const VaultCard(
+            child: AppEmptyState(
+              compact: true,
+              icon: Icons.handshake_outlined,
+              title: 'Nothing lent out',
+              message:
+                  'Nothing is owed to you right now. When you front money for '
+                  'someone it appears here, and you choose whether it still '
+                  'counts as yours.',
             ),
           )
-        else ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Text(
-              'Counted ${Money.format(p.countedReceivablesMinor, code: code)} · '
-              'not counted '
-              '${Money.format(p.uncountedReceivablesMinor, code: code)}',
-              style: text.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
+        else
+          RowGroup(
+            separatorIndent: 0,
+            children: [
+              for (final loan in loans)
+                _LoanRow(
+                  entry: loan,
+                  code: code,
+                  onChanged: (v) => ref
+                      .read(appDataProvider.notifier)
+                      .setReceivableCountsAsSavings(loan.txn.id, v),
+                  onOpen: () => context.push('/txn/${loan.txn.id}'),
+                ),
+            ],
           ),
-          Card(
-            child: Column(
-              children: [
-                for (final loan in loans)
-                  _LoanRow(
-                    entry: loan,
-                    code: code,
-                    onChanged: (v) => ref
-                        .read(appDataProvider.notifier)
-                        .setReceivableCountsAsSavings(loan.txn.id, v),
-                    onOpen: () => context.push('/txn/${loan.txn.id}'),
-                  ),
-              ],
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -195,53 +200,46 @@ class _PeriodCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
+    final c = SuiteColors.of(context);
     final up = window.changeMinor >= 0;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+    return VaultCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.label.copyWith(color: c.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: StatTile(
+                  label: 'Carried in',
+                  value: Money.format(window.carriedInMinor, code: code),
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: StatTile(
-                    label: 'Carried in',
-                    value: Money.format(window.carriedInMinor, code: code),
-                  ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: StatTile(
+                  label: 'Change',
+                  value:
+                      '${up ? '+' : '−'}'
+                      '${Money.format(window.changeMinor.abs(), code: code)}',
+                  valueColor: up ? c.positive : c.warning,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: StatTile(
-                    label: 'Change',
-                    value:
-                        '${up ? '+' : '-'}'
-                        '${Money.format(window.changeMinor.abs(), code: code)}',
-                    valueColor: up
-                        ? AppColors.success(brightness)
-                        : AppColors.warning(brightness),
-                  ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: StatTile(
+                  label: 'At end',
+                  value: Money.format(window.closingMinor, code: code),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: StatTile(
-                    label: 'At end',
-                    value: Money.format(window.closingMinor, code: code),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -264,38 +262,38 @@ class _LoanRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
     final counts = entry.txn.receivableCountsAsSavings;
     final who = entry.txn.counterparty.trim().isEmpty
         ? PeopleLedger.unnamedLabel
         : entry.txn.counterparty.trim();
     return Column(
       children: [
-        ListTile(
+        AppListRow(
           onTap: onOpen,
-          title: Text(who, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text(
-            DateFormat.yMMMd().format(entry.txn.date),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          trailing: MoneyTrailing(
-            amount: Money.format(entry.outstandingMinor, code: code),
+          leading: IconBadge(monogram: who.characters.first.toUpperCase()),
+          title: who,
+          subtitle: DateFormat.yMMMd().format(entry.txn.date),
+          trailing: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 140),
+            child: AmountText(
+              entry.outstandingMinor,
+              code: code,
+              style: AppTextStyles.number,
+              alignment: AlignmentDirectional.centerEnd,
+            ),
           ),
         ),
         SwitchListTile(
           dense: true,
-          contentPadding: const EdgeInsets.only(
-            left: AppSpacing.md,
-            right: AppSpacing.sm,
-          ),
-          title: const Text('Counts as my money'),
-          subtitle: const Text(
-            'On when you are only passing it through for someone',
+          contentPadding: const EdgeInsets.only(left: 68, right: AppSpacing.md),
+          title: Text(
+            'Counts as my money',
+            style: AppTextStyles.bodyMedium.copyWith(color: c.textSecondary),
           ),
           value: counts,
           onChanged: onChanged,
         ),
-        const Divider(height: 1),
       ],
     );
   }

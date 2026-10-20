@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/money.dart';
@@ -26,38 +27,29 @@ class SavingsProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final brightness = Theme.of(context).brightness;
-    final barColor = position.isDipping
-        ? AppColors.warning(brightness)
-        : AppColors.success(brightness);
+    final c = SuiteColors.of(context);
+    final barColor = position.isDipping ? c.warning : c.positive;
 
     if (!position.hasTarget) {
       return Text(
         'Set a target to see how much is free to spend.',
-        style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: position.progress,
-            minHeight: 8,
-            backgroundColor: scheme.surfaceContainerHighest,
-            color: barColor,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.xs),
+        AppProgressBar(value: position.progress, color: barColor),
+        const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
             Expanded(
               child: Text(
                 savingsStandingLabel(position, code),
-                style: text.bodySmall?.copyWith(color: barColor),
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: barColor,
+                  fontWeight: FontWeight.w600,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -65,7 +57,7 @@ class SavingsProgress extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Text(
               'Target ${Money.format(position.targetMinor, code: code)}',
-              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
             ),
           ],
         ),
@@ -87,33 +79,24 @@ class SavingsDipWarning extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    // Painted on the semantic warning container, so the text uses the theme's
-    // primary text colour for that brightness rather than an `on*` role that
-    // belongs to a different surface.
-    final background = brightness == Brightness.dark
-        ? AppColors.warningContainerDark
-        : AppColors.warningContainerLight;
-    final foreground = AppColors.textPrimary(brightness);
-    final accent = AppColors.warning(brightness);
-
+    final c = SuiteColors.of(context);
+    // Painted on the semantic warning container, so the text uses the
+    // primary text colour rather than an `on*` role of a different surface.
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.smd),
       decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+        color: c.warningContainer,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
       ),
       child: Row(
         children: [
-          Icon(Icons.warning_amber_rounded, color: accent, size: 20),
-          const SizedBox(width: AppSpacing.sm),
+          Icon(Icons.warning_amber_rounded, color: c.warning, size: 20),
+          const SizedBox(width: AppSpacing.smd),
           Expanded(
             child: Text(
               'You are ${Money.format(shortfallMinor, code: code)} into your '
               'savings — you hold less than your target.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: foreground),
+              style: AppTextStyles.bodySmall.copyWith(color: c.textPrimary),
             ),
           ),
         ],

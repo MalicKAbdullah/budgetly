@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/money.dart';
 
@@ -53,18 +54,22 @@ class _SavingsTargetScreenState extends State<SavingsTargetScreen> {
         actions: [TextButton(onPressed: _save, child: const Text('Save'))],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.sm,
+          AppSpacing.gutter,
+          AppSpacing.xl,
+        ),
         children: [
-          TextField(
+          AppTextField(
             controller: _amount,
             autofocus: true,
+            label: 'Target amount',
+            prefixText: Money.symbol(widget.code),
+            helper: 'Leave blank for no target',
+            errorText: _error,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'Target amount',
-              prefixText: '${widget.code} ',
-              helperText: 'Leave blank for no target',
-              errorText: _error,
-            ),
+            textStyle: AppTextStyles.numberMedium,
             onChanged: (_) => setState(() => _error = null),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -72,12 +77,12 @@ class _SavingsTargetScreenState extends State<SavingsTargetScreen> {
             'This is how much you want held back as savings across all your '
             'accounts. Budgetly compares it with what you have actually '
             'earmarked and shows the difference, plus or minus.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: SuiteColors.of(context).textSecondary,
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-          FilledButton(onPressed: _save, child: const Text('Save target')),
+          const SizedBox(height: AppSpacing.xl),
+          VaultButton(label: 'Save target', onPressed: _save),
         ],
       ),
     );
