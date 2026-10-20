@@ -13,7 +13,10 @@ import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/features/capture/review_fields.dart';
 import 'package:budgetly/src/features/capture/sms_parser.dart';
+import 'package:budgetly/src/features/capture/split_draft.dart';
+import 'package:budgetly/src/features/capture/split_section.dart';
 import 'package:budgetly/src/features/capture/transfer_hint.dart';
+import 'package:budgetly/src/features/people/person_picker.dart';
 import 'package:budgetly/src/features/people/settle_suggestions.dart';
 import 'package:uuid/uuid.dart';
 
@@ -52,6 +55,13 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
   /// The person this money squares up with, chosen from the suggestions.
   SettleSuggestion? _settle;
 
+  /// Dividing the payment among people and categories. Never combined with
+  /// [_settle]: a settlement is money in transit that costs the owner nothing,
+  /// while a split is spending with receivables — the ledger keeps the two on
+  /// different transactions ([Txn.personId] vs [Txn.splits]).
+  final _split = CaptureSplitDraft();
+  bool _isSplit = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,7 +87,20 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
   void dispose() {
     _amount.dispose();
     _note.dispose();
+    _split.dispose();
     super.dispose();
+  }
+
+  int get _totalMinor => Money.parse(_amount.text) ?? 0;
+
+  /// Splitting only divides spending, and never alongside a settlement.
+  bool get _splitOn =>
+      _isSplit && _mode == CaptureMode.expense && _settle == null;
+
+  Future<void> _addPerson() async {
+    final person = await showPersonPicker(context, exclude: _split.personIds);
+    if (person == null) return;
+    setState(() => _split.addPerson(person.id));
   }
 
   bool get _isTransfer => _mode == CaptureMode.transfer;
@@ -119,6 +142,7 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
     if (accounts.isEmpty) return false;
     if ((Money.parse(_amount.text) ?? 0) <= 0) return false;
     if (_accountId == null) return false;
+    if (_splitOn) return _split.validate(_totalMinor) == null;
     if (!_isTransfer) return true;
     return _toAccountId != null && _toAccountId != _accountId;
   }
@@ -143,13 +167,27 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
       createdAt: ref.read(clockProvider)(),
     );
     final settle = _settle;
-    final txns = settle == null
-        ? [txn]
-        : SettleMatch.apply(
-            base: txn,
-            s: settle,
-            newId: () => const Uuid().v4(),
-          );
+    final splitOn = _splitOn;
+    final List<Txn> txns;
+    if (splitOn) {
+      final plan = _split.plan(minor);
+      txns = plan.toTxns(
+        base: txn,
+        counterparty: PeopleLedger.counterpartyLabel(
+          ref.read(appDataProvider).requireValue,
+          plan.people,
+        ),
+        newId: () => const Uuid().v4(),
+      );
+    } else if (settle != null) {
+      txns = SettleMatch.apply(
+        base: txn,
+        s: settle,
+        newId: () => const Uuid().v4(),
+      );
+    } else {
+      txns = [txn];
+    }
     await ref
         .read(appDataProvider.notifier)
         .addTxnsForNotice(txns, widget.notice.id);
@@ -159,6 +197,8 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
         content: Text(
           settle != null
               ? 'Settlement with ${settle.position.name} recorded.'
+              : splitOn
+              ? 'Split transaction added.'
               : _isTransfer
               ? 'Transfer added.'
               : 'Transaction added.',
@@ -263,7 +303,7 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
             ),
             const SizedBox(height: AppSpacing.md),
             ..._accountFields(accounts, sameAccount),
-            if (suggestions.isNotEmpty) ...[
+            if (suggestions.isNotEmpty && !_splitOn) ...[
               const SizedBox(height: AppSpacing.lg),
               SettleSuggestionPicker(
                 suggestions: suggestions,
@@ -273,12 +313,47 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
                 onChanged: (s) => setState(() => _settle = s),
               ),
             ],
-            if (_mode == CaptureMode.expense && !_settlesWhole) ...[
+            if (_mode == CaptureMode.expense &&
+                !_settlesWhole &&
+                !_splitOn) ...[
               const SizedBox(height: AppSpacing.md),
               CategoryPicker(
                 categories: categories,
                 value: _categoryId,
                 onChanged: (v) => setState(() => _categoryId = v),
+              ),
+            ],
+            if (_mode == CaptureMode.expense && _settle == null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Split this payment'),
+                subtitle: const Text(
+                  'Share it with people or across categories — only your '
+                  'share counts as your spending',
+                ),
+                value: _isSplit,
+                onChanged: (v) => setState(() {
+                  _isSplit = v;
+                  if (v) {
+                    _split.start(
+                      totalMinor: _totalMinor,
+                      categoryId: _categoryId,
+                    );
+                  }
+                }),
+              ),
+            ],
+            if (_splitOn && data != null) ...[
+              CaptureSplitSection(
+                draft: _split,
+                totalMinor: _totalMinor,
+                categories: categories,
+                // Rows only ever hold ids the person picker just registered.
+                nameFor: (id) => data.personById(id)!.name,
+                code: code,
+                onAddPerson: _addPerson,
+                onChanged: () => setState(() {}),
               ),
             ],
             if (accounts.isEmpty)
@@ -300,6 +375,8 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
               child: Text(
                 _settle != null
                     ? 'Record settlement'
+                    : _splitOn
+                    ? 'Add split'
                     : _isTransfer
                     ? 'Add transfer'
                     : 'Add transaction',
