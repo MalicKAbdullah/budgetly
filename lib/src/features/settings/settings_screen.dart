@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:core_backup/core_backup.dart';
 import 'package:core_lock/core_lock.dart';
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/features/backup/backup_codec.dart';
 
@@ -18,102 +20,78 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.sm,
+          AppSpacing.gutter,
+          AppSpacing.xxl,
+        ),
         children: [
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.account_balance_wallet_outlined),
-                  title: const Text('Accounts'),
-                  subtitle: const Text('Cash, bank, wallets'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/accounts'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.people_outline),
-                  title: const Text('People'),
-                  subtitle: const Text('Split expenses and settling up'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/people'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.savings_outlined),
-                  title: const Text('Savings'),
-                  subtitle: const Text('What has to stay put, and the target'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/savings'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.repeat),
-                  title: const Text('Recurring'),
-                  subtitle: const Text('Salary, rent, subscriptions'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/recurring'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.sms_outlined),
-                  title: const Text('Captured transactions'),
-                  subtitle: const Text('Review bank/wallet alerts and history'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/capture'),
-                ),
-              ],
-            ),
+          const _Section('Money'),
+          RowGroup(
+            children: [
+              SettingsTile(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Accounts',
+                subtitle: 'Cash, bank, wallets',
+                onTap: () => context.push('/accounts'),
+              ),
+              SettingsTile(
+                icon: Icons.people_outline_rounded,
+                title: 'People',
+                subtitle: 'Split expenses and settling up',
+                onTap: () => context.push('/people'),
+              ),
+              SettingsTile(
+                icon: Icons.savings_outlined,
+                title: 'Savings',
+                subtitle: 'What has to stay put, and the target',
+                onTap: () => context.push('/savings'),
+              ),
+              SettingsTile(
+                icon: Icons.repeat_rounded,
+                title: 'Recurring',
+                subtitle: 'Salary, rent, subscriptions',
+                onTap: () => context.push('/recurring'),
+              ),
+              SettingsTile(
+                icon: Icons.sms_outlined,
+                title: 'Captured transactions',
+                subtitle: 'Review bank/wallet alerts and history',
+                onTap: () => context.push('/capture'),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.md),
           const _AutoCaptureTile(),
-          const SizedBox(height: AppSpacing.md),
-          Text('Security', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
+          const _Section('Privacy & security'),
           AppLockSettings(controller: ref.watch(lockControllerProvider)),
-          const SizedBox(height: AppSpacing.sm),
           const _WidgetAmountsTile(),
-          const SizedBox(height: AppSpacing.md),
-          Text('Updates', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
-          const _UpdateCheckTile(),
-          const SizedBox(height: AppSpacing.md),
-          Text(
+          const _Section(
             'Automatic backup',
-            style: Theme.of(context).textTheme.titleSmall,
+            subtitle:
+                'Encrypted with your passphrase before it leaves Budgetly',
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Card(
+          VaultCard(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             child: AutoBackupSection(
               service: ref.watch(autoBackupServiceProvider),
               producer: ref.watch(budgetlyBackupProducerProvider),
               onRevealGate: () => _confirmReveal(context, ref),
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.settings_backup_restore),
-              title: const Text('Restore from backup'),
-              subtitle: const Text(
-                'Replace all data with a .budgetlybackup file',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _restore(context, ref),
-            ),
+          const SizedBox(height: AppSpacing.smd),
+          VaultButton(
+            label: 'Restore from backup',
+            icon: Icons.settings_backup_restore_rounded,
+            variant: VaultButtonVariant.secondary,
+            onPressed: () => _restore(context, ref),
           ),
-          const SizedBox(height: AppSpacing.md),
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
-              child: Text(
-                'Budgetly is offline and private. Your data is encrypted on this '
-                'device; backups are encrypted with your passphrase before they '
-                'ever reach a folder or Drive.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ),
-          ),
+          const SizedBox(height: AppSpacing.sm),
+          const _Footnote('Replaces all data with a .budgetlybackup file.'),
+          const _Section('Updates'),
+          const _UpdateCheckTile(),
+          const SizedBox(height: AppSpacing.xl),
+          const _About(),
         ],
       ),
     );
@@ -278,21 +256,24 @@ class _AutoCaptureTileState extends ConsumerState<_AutoCaptureTile>
     if (!ref.read(captureServiceProvider).supported) {
       return const SizedBox.shrink();
     }
-    return Card(
-      child: SwitchListTile(
-        secondary: const Icon(Icons.notifications_active_outlined),
-        title: const Text('Auto-capture from notifications'),
-        subtitle: Text(
-          _enabled
-              ? 'Reading bank/wallet alerts on-device. Confirm them in import.'
-              : 'Grant notification access so Budgetly can read transaction alerts',
-        ),
-        value: _enabled,
-        onChanged: (_) async {
-          // Toggling either way just opens the system screen; Android owns
-          // the actual grant. We re-read on resume.
-          await ref.read(captureServiceProvider).openSettings();
-        },
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.smd),
+      child: RowGroup(
+        children: [
+          SettingsTile(
+            icon: Icons.notifications_active_outlined,
+            title: 'Auto-capture alerts',
+            subtitle: _enabled
+                ? 'Reading bank alerts on this device'
+                : 'Needs notification access',
+            trailing: Switch(
+              value: _enabled,
+              // Toggling either way just opens the system screen; Android
+              // owns the actual grant. We re-read on resume.
+              onChanged: (_) => ref.read(captureServiceProvider).openSettings(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -336,15 +317,13 @@ class _UpdateCheckTileState extends ConsumerState<_UpdateCheckTile> {
   @override
   Widget build(BuildContext context) {
     final autoCheck = ref.watch(updateAutoCheckProvider).valueOrNull ?? true;
-    return Card(
-      child: Column(
-        children: [
-          SwitchListTile(
-            secondary: const Icon(Icons.system_update_alt),
-            title: const Text('Check for updates on open'),
-            subtitle: const Text(
-              'Looks for a new release on GitHub. Nothing is uploaded.',
-            ),
+    return RowGroup(
+      children: [
+        SettingsTile(
+          icon: Icons.system_update_alt_rounded,
+          title: 'Check for updates',
+          subtitle: 'On open · nothing is uploaded',
+          trailing: Switch(
             value: autoCheck,
             onChanged: (v) async {
               await ref
@@ -354,21 +333,20 @@ class _UpdateCheckTileState extends ConsumerState<_UpdateCheckTile> {
               ref.invalidate(updateCheckProvider);
             },
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.refresh),
-            title: const Text('Check now'),
-            trailing: _checking
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.chevron_right),
-            onTap: _checking ? null : _checkNow,
-          ),
-        ],
-      ),
+        ),
+        SettingsTile(
+          icon: Icons.refresh_rounded,
+          title: 'Check now',
+          trailing: _checking
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : null,
+          onTap: _checking ? null : _checkNow,
+        ),
+      ],
     );
   }
 }
@@ -383,17 +361,97 @@ class _WidgetAmountsTile extends ConsumerWidget {
     if (!Platform.isAndroid) return const SizedBox.shrink();
     final show = ref.watch(widgetShowAmountsProvider).valueOrNull;
     if (show == null) return const SizedBox.shrink();
-    return Card(
-      child: SwitchListTile(
-        secondary: const Icon(Icons.widgets_outlined),
-        title: const Text('Show amounts on home-screen widget'),
-        subtitle: const Text('Off shows •••• instead of your figures'),
-        value: show,
-        onChanged: (v) async {
-          await ref.read(homeWidgetServiceProvider).writeShowAmounts(v);
-          ref.invalidate(widgetShowAmountsProvider);
-        },
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.smd),
+      child: RowGroup(
+        children: [
+          SettingsTile(
+            icon: Icons.widgets_outlined,
+            title: 'Amounts on widgets',
+            subtitle: 'Off shows •••• instead',
+            trailing: Switch(
+              value: show,
+              onChanged: (v) async {
+                await ref.read(homeWidgetServiceProvider).writeShowAmounts(v);
+                ref.invalidate(widgetShowAmountsProvider);
+              },
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+/// A settings section title with the suite's spacing above it.
+class _Section extends StatelessWidget {
+  const _Section(this.title, {this.subtitle});
+
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: AppSpacing.lg),
+    child: SectionHeader(title: title, subtitle: subtitle),
+  );
+}
+
+class _Footnote extends StatelessWidget {
+  const _Footnote(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: AppTextStyles.bodySmall.copyWith(
+        color: SuiteColors.of(context).textTertiary,
+      ),
+    ),
+  );
+}
+
+/// App identity, version, the privacy promise and the family endorsement.
+class _About extends StatelessWidget {
+  const _About();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Column(
+      children: [
+        const SuiteAppIcon(app: SuiteApp.budgetly, size: 56),
+        const SizedBox(height: AppSpacing.smd),
+        Text(
+          'Budgetly',
+          style: AppTextStyles.h3.copyWith(color: c.textPrimary),
+        ),
+        const SizedBox(height: AppSpacing.xxs),
+        FutureBuilder<PackageInfo>(
+          future: PackageInfo.fromPlatform(),
+          builder: (context, snap) => Text(
+            snap.hasData ? 'Version ${snap.data!.version}' : ' ',
+            style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Text(
+            'Offline and private. Your data is encrypted on this device; '
+            'backups are encrypted with your passphrase before they ever '
+            'reach a folder or Drive.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        const SuiteEndorsement(),
+      ],
     );
   }
 }
