@@ -3,7 +3,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/models/txn.dart';
 import 'package:budgetly/src/core/widgets/money_text.dart';
@@ -88,17 +88,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         .watch(periodFilterProvider)
         .resolve(DateTime.now());
     final filters = _filters;
-    final filtered = filters.apply(data, start: start, end: end);
-
+    final list = ref.watch(
+      activityListProvider((filters: filters, start: start, end: end)),
+    );
     final code = data.currencyCode;
-    // Header totals answer "what did this cost me", so they use own share and
-    // skip settlements — the same rule as the dashboard.
-    final spent = filtered
-        .where((t) => t.type == TxnType.expense && !t.isSettlement)
-        .fold(0, (a, t) => a + t.ownShareMinor);
-    final received = filtered
-        .where((t) => t.type == TxnType.income && !t.isSettlement)
-        .fold(0, (a, t) => a + t.amountMinor);
 
     return CustomScrollView(
       slivers: [
@@ -123,15 +116,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               _Totals(
-                count: filtered.length,
-                spent: spent,
-                income: received,
+                count: list.count,
+                spent: list.spentMinor,
+                income: list.incomeMinor,
                 code: code,
               ),
             ],
           ),
         ),
-        if (filtered.isEmpty)
+        if (list.count == 0)
           SliverFillRemaining(
             hasScrollBody: false,
             child: _NoMatches(
@@ -141,62 +134,129 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           )
         else
-          ..._daySlivers(context, filtered, data, code),
+          for (final day in list.days)
+            SliverMainAxisGroup(
+              slivers: [
+                PinnedHeaderSliver(
+                  child: TxnDayHeader(
+                    day: day.day,
+                    spentMinor: day.spentMinor,
+                    code: code,
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.gutter,
+                  ),
+                  sliver: TxnDayCard(txns: day.txns, data: data),
+                ),
+              ],
+            ),
         const SliverPadding(padding: EdgeInsets.only(bottom: 104)),
       ],
     );
   }
 }
 
-/// The filtered list split into days, newest first: each day is one grouped
-/// card under a header that stays pinned while its day scrolls by and shows
-/// what that day cost. [txns] is already sorted newest first by
-/// [TxnFilters.apply].
-List<Widget> _daySlivers(
-  BuildContext context,
-  List<Txn> txns,
-  AppData data,
-  String code,
-) {
-  final days = <(DateTime, List<Txn>)>[];
-  for (final t in txns) {
-    final day = DateTime(t.date.year, t.date.month, t.date.day);
-    if (days.isEmpty || days.last.$1 != day) days.add((day, []));
-    days.last.$2.add(t);
-  }
-  return [
-    for (final (day, items) in days)
-      SliverMainAxisGroup(
-        slivers: [
-          PinnedHeaderSliver(
-            child: _DayHeader(day: day, txns: items, code: code),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-            sliver: SliverToBoxAdapter(
-              child: RowGroup(
-                separatorIndent: 70,
-                children: [
-                  for (final t in items)
-                    TxnTile(
-                      txn: t,
-                      data: data,
-                      onTap: () => context.push('/txn/${t.id}'),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
+/// One day of the activity list as a grouped card ([RowGroup]'s surface,
+/// rounded hairline border and inset separators), with its rows built only
+/// as they scroll into view. Each row sits on its own transparent [Material]
+/// so its ink shows above the card fill; the first and last rows clip that
+/// ink to the card's rounded corners.
+class TxnDayCard extends StatelessWidget {
+  const TxnDayCard({required this.txns, required this.data, super.key});
+
+  /// The day's transactions, newest first.
+  final List<Txn> txns;
+  final AppData data;
+
+  static const double _separatorIndent = 70;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    const corner = Radius.circular(AppSpacing.radiusLg);
+    const radius = BorderRadius.all(corner);
+    final last = txns.length - 1;
+    return DecoratedSliver(
+      decoration: ShapeDecoration(
+        color: c.surface,
+        shape: const RoundedRectangleBorder(borderRadius: radius),
       ),
-  ];
+      sliver: DecoratedSliver(
+        // The border is drawn over the rows, as a [Material]'s is.
+        position: DecorationPosition.foreground,
+        decoration: ShapeDecoration(
+          shape: _ClippedOutline(
+            borderRadius: radius,
+            side: BorderSide(color: c.hairline),
+          ),
+        ),
+        sliver: SliverList.builder(
+          itemCount: txns.length,
+          itemBuilder: (context, i) {
+            final t = txns[i];
+            Widget row = Material(
+              type: MaterialType.transparency,
+              child: TxnTile(
+                txn: t,
+                data: data,
+                onTap: () => context.push('/txn/${t.id}'),
+              ),
+            );
+            if (i == 0 || i == last) {
+              row = ClipRRect(
+                borderRadius: BorderRadius.vertical(
+                  top: i == 0 ? corner : Radius.zero,
+                  bottom: i == last ? corner : Radius.zero,
+                ),
+                child: row,
+              );
+            }
+            if (i == 0) return row;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(height: 1, indent: _separatorIndent, color: c.hairline),
+                row,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.day, required this.txns, required this.code});
+/// A [RoundedRectangleBorder] whose stroke is clipped to the shape's outer
+/// edge, as a [Material] with an anti-aliased clip paints its border — so the
+/// rounded corners match [RowGroup] pixel for pixel.
+class _ClippedOutline extends RoundedRectangleBorder {
+  const _ClippedOutline({super.borderRadius, super.side});
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    canvas
+      ..save()
+      ..clipPath(getOuterPath(rect, textDirection: textDirection));
+    super.paint(canvas, rect, textDirection: textDirection);
+    canvas.restore();
+  }
+}
+
+/// A day's heading in the activity list: the date and what the day cost.
+class TxnDayHeader extends StatelessWidget {
+  const TxnDayHeader({
+    required this.day,
+    required this.spentMinor,
+    required this.code,
+    super.key,
+  });
 
   final DateTime day;
-  final List<Txn> txns;
+
+  /// What the day cost the owner, by the same rule as the totals above.
+  final int spentMinor;
   final String code;
 
   String _label(DateTime now) {
@@ -212,10 +272,7 @@ class _DayHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
-    // Same "what did this cost me" rule as the totals above the list.
-    final spent = txns
-        .where((t) => t.type == TxnType.expense && !t.isSettlement)
-        .fold(0, (a, t) => a + t.ownShareMinor);
+    final spent = spentMinor;
     return Container(
       color: c.background,
       padding: const EdgeInsets.fromLTRB(

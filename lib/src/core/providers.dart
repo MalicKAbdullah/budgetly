@@ -17,9 +17,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/data/app_data_notifier.dart';
 import 'package:budgetly/src/core/data/period_filter_store.dart';
+import 'package:budgetly/src/core/logic/activity_list.dart';
 import 'package:budgetly/src/core/logic/dashboard_summary.dart';
 import 'package:budgetly/src/core/models/period_filter.dart';
 import 'package:budgetly/src/core/security/key_derivation.dart';
+import 'package:budgetly/src/core/state/txn_filters.dart';
 import 'package:budgetly/src/core/storage/data_key_store.dart';
 import 'package:budgetly/src/core/storage/budgetly_store.dart';
 import 'package:budgetly/src/core/storage/vault_file.dart';
@@ -248,6 +250,22 @@ final dashboardSummaryProvider = Provider.autoDispose
         );
       }
       return summary;
+    });
+
+/// What the activity list shows for one filter set and date window.
+typedef ActivityQuery = ({TxnFilters filters, DateTime start, DateTime end});
+
+/// The activity list, grouped into days. Recomputed only when the data
+/// snapshot or the query changes, never on a plain rebuild.
+final activityListProvider = Provider.autoDispose
+    .family<ActivityList, ActivityQuery>((ref, query) {
+      final data = ref.watch(appDataProvider.select((a) => a.requireValue));
+      return ActivityList.of(
+        data,
+        query.filters,
+        start: query.start,
+        end: query.end,
+      );
     });
 
 /// Keeps the home-screen widgets in step with the vault: pushes a fresh

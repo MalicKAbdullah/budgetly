@@ -57,6 +57,17 @@ final class TxnFilters {
     search: search ?? this.search,
   );
 
+  @override
+  bool operator ==(Object other) =>
+      other is TxnFilters &&
+      other.type == type &&
+      other.accountId == accountId &&
+      other.categoryId == categoryId &&
+      other.search == search;
+
+  @override
+  int get hashCode => Object.hash(type, accountId, categoryId, search);
+
   /// The matching transactions inside the inclusive `[start, end]` window,
   /// newest first.
   List<Txn> apply(
