@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
-import 'package:budgetly/src/core/logic/budgets.dart';
-import 'package:budgetly/src/core/logic/flow.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
@@ -84,21 +82,15 @@ class _Body extends ConsumerWidget {
     final month = DateTime(now.year, now.month);
     final code = data.currencyCode;
     final filter = ref.watch(periodFilterProvider);
-    final (start, end) = filter.resolve(now);
-
-    final spent = DashboardFlow.spentInRange(data, start, end);
-    final income = DashboardFlow.incomeInRange(data, start, end);
-    final buckets = DashboardFlow.spendBuckets(data, start, end);
-    final flows = DashboardFlow.byAccount(data, start, end);
+    final summary = ref.watch(
+      dashboardSummaryProvider(DateTime(now.year, now.month, now.day)),
+    );
+    final (start, end) = (summary.start, summary.end);
     // Budgets stay monthly (a budget is a per-month figure).
-    final budgetRows = Budgets.byCategory(
-      data,
-      month,
-    ).where((c) => c.hasBudget || c.spentMinor > 0).toList();
-    final recent = [...data.txns]..sort((a, b) => b.date.compareTo(a.date));
-    final today = DateTime(now.year, now.month, now.day);
-    final todayCount = recent.where((t) => !t.date.isBefore(today)).length;
-    final people = PeopleLedger.openPositions(data);
+    final budgetRows = summary.budgetRows;
+    final recent = summary.recent;
+    final todayCount = summary.todayCount;
+    final people = summary.openPeople;
     final c = SuiteColors.of(context);
 
     return SafeArea(
@@ -129,8 +121,8 @@ class _Body extends ConsumerWidget {
               const CaptureBanner(),
               const UpdateCard(),
               MonthHeroCard(
-                data: data,
-                now: now,
+                summary: summary,
+                code: code,
                 onTap: () => context.go('/budgets'),
               ),
               const SizedBox(height: AppSpacing.smd),
@@ -141,7 +133,12 @@ class _Body extends ConsumerWidget {
                 onTap: () => context.go('/budgets'),
               ),
               if (people.isNotEmpty) ...[
-                _PeopleSection(people: people, data: data),
+                _PeopleSection(
+                  people: people,
+                  owedToYouMinor: summary.owedToYouMinor,
+                  youOweMinor: summary.youOweMinor,
+                  code: code,
+                ),
                 const SizedBox(height: AppSpacing.smd),
               ],
               const SizedBox(height: AppSpacing.smd),
@@ -166,7 +163,7 @@ class _Body extends ConsumerWidget {
                     )
                   : RowGroup(
                       children: [
-                        for (final t in recent.take(4))
+                        for (final t in recent)
                           TxnTile(
                             txn: t,
                             data: data,
@@ -182,16 +179,15 @@ class _Body extends ConsumerWidget {
               const PeriodFilterBar(),
               const SizedBox(height: AppSpacing.smd),
               SummaryCard(
-                spentMinor: spent,
-                incomeMinor: income,
+                spentMinor: summary.spentMinor,
+                incomeMinor: summary.incomeMinor,
                 code: code,
                 onTap: () => context.go('/transactions'),
               ),
               const SizedBox(height: AppSpacing.smd),
               CategoryBreakdown(
                 data: data,
-                start: start,
-                end: end,
+                sorted: summary.spendByCategory,
                 code: code,
                 onSelect: (categoryId) {
                   // One tap answers "what did I spend this on": narrow every
@@ -202,7 +198,7 @@ class _Body extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.smd),
               SpendChart(
-                buckets: buckets,
+                buckets: summary.buckets,
                 title: 'Spending by ${_bucketNoun(start, end)}',
                 unit: 'per ${_bucketNoun(start, end)}',
                 code: code,
@@ -210,8 +206,8 @@ class _Body extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.smd),
               WeekCard(
-                data: data,
-                now: now,
+                summary: summary,
+                code: code,
                 onTap: () => context.go('/transactions'),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -220,10 +216,12 @@ class _Body extends ConsumerWidget {
                 actionLabel: 'Accounts',
                 onAction: () => context.push('/accounts'),
               ),
-              SavingsCard(data: data, code: code),
+              SavingsCard(position: summary.savings, code: code),
               AccountsCard(
                 data: data,
-                flows: flows,
+                flows: summary.accountFlows,
+                balances: summary.accountBalances,
+                netWorthMinor: summary.netWorthMinor,
                 code: code,
                 onTap: () => context.push('/accounts'),
               ),
@@ -330,17 +328,23 @@ class _Header extends StatelessWidget {
 /// Who owes the owner and whom the owner owes, biggest balance first, each
 /// row opening that person's ledger to settle up.
 class _PeopleSection extends StatelessWidget {
-  const _PeopleSection({required this.people, required this.data});
+  const _PeopleSection({
+    required this.people,
+    required this.owedToYouMinor,
+    required this.youOweMinor,
+    required this.code,
+  });
   final List<PersonPosition> people;
-  final AppData data;
+  final int owedToYouMinor;
+  final int youOweMinor;
+  final String code;
 
   static const _shown = 3;
 
   @override
   Widget build(BuildContext context) {
-    final code = data.currencyCode;
-    final owed = PeopleLedger.totalOwedToYouMinor(data);
-    final owe = PeopleLedger.totalYouOweMinor(data);
+    final owed = owedToYouMinor;
+    final owe = youOweMinor;
     final sorted = [...people]
       ..sort((a, b) => b.netMinor.abs().compareTo(a.netMinor.abs()));
 

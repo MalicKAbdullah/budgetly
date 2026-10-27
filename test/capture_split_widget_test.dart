@@ -105,6 +105,7 @@ void main() {
     final seeding = ProviderContainer(
       overrides: [
         vaultFileProvider.overrideWithValue(vault),
+        vaultWorkerProvider.overrideWithValue(<R>(work) async => work()),
         secureStorageProvider.overrideWithValue(storage),
       ],
     );
@@ -114,6 +115,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         vaultFileProvider.overrideWithValue(vault),
+        vaultWorkerProvider.overrideWithValue(<R>(work) async => work()),
         secureStorageProvider.overrideWithValue(storage),
         captureServiceProvider.overrideWithValue(capture),
         clockProvider.overrideWithValue(() => now),

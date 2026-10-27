@@ -2,7 +2,6 @@ import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/savings.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/features/savings/widgets/savings_view.dart';
@@ -11,14 +10,14 @@ import 'package:budgetly/src/features/savings/widgets/savings_view.dart';
 /// what is free to spend right now — with what they hold and their target
 /// underneath it. Tapping it opens the savings screen.
 class SavingsCard extends StatelessWidget {
-  const SavingsCard({required this.data, required this.code, super.key});
+  const SavingsCard({required this.position, required this.code, super.key});
 
-  final AppData data;
+  final SavingsPosition position;
   final String code;
 
   @override
   Widget build(BuildContext context) {
-    final p = Savings.position(data);
+    final p = position;
     final c = SuiteColors.of(context);
 
     return Padding(

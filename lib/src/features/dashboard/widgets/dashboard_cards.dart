@@ -2,7 +2,6 @@ import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
-import 'package:budgetly/src/core/logic/balances.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
 import 'package:budgetly/src/core/logic/flow.dart';
 import 'package:budgetly/src/core/models/account.dart';
@@ -124,16 +123,17 @@ class _CountUp extends StatelessWidget {
 class CategoryBreakdown extends StatelessWidget {
   const CategoryBreakdown({
     required this.data,
-    required this.start,
-    required this.end,
+    required this.sorted,
     required this.code,
     required this.onSelect,
     super.key,
   });
 
   final AppData data;
-  final DateTime start;
-  final DateTime end;
+
+  /// Own-share spend per category id, biggest first
+  /// ([DashboardFlow.spendByCategory]).
+  final List<MapEntry<String, int>> sorted;
   final String code;
 
   /// Called with the tapped row's category id (`''` = uncategorized).
@@ -141,7 +141,6 @@ class CategoryBreakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sorted = DashboardFlow.spendByCategory(data, start, end);
     if (sorted.isEmpty) return const SizedBox.shrink();
     final c = SuiteColors.of(context);
     final total = sorted.fold(0, (s, e) => s + e.value);
@@ -301,6 +300,8 @@ class AccountsCard extends StatelessWidget {
   const AccountsCard({
     required this.data,
     required this.flows,
+    required this.balances,
+    required this.netWorthMinor,
     required this.code,
     this.onTap,
     super.key,
@@ -308,6 +309,10 @@ class AccountsCard extends StatelessWidget {
 
   final AppData data;
   final List<AccountFlow> flows;
+
+  /// Current balance per account id.
+  final Map<String, int> balances;
+  final int netWorthMinor;
   final String code;
   final VoidCallback? onTap;
 
@@ -344,7 +349,7 @@ class AccountsCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 AmountText(
-                  Balances.netWorthMinor(data),
+                  netWorthMinor,
                   code: code,
                   style: AppTextStyles.numberLarge,
                 ),
@@ -360,7 +365,7 @@ class AccountsCard extends StatelessWidget {
               trailing: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 150),
                 child: AmountText(
-                  Balances.accountBalanceMinor(data, a.id),
+                  balances[a.id]!,
                   code: code,
                   style: AppTextStyles.number,
                   alignment: AlignmentDirectional.centerEnd,

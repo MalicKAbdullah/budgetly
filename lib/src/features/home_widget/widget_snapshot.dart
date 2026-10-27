@@ -1,5 +1,6 @@
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
+import 'package:budgetly/src/core/logic/dashboard_summary.dart';
 import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/money.dart';
 
@@ -61,22 +62,51 @@ final class WidgetSnapshot {
     required bool showAmounts,
   }) {
     final month = DateTime(now.year, now.month);
-    final code = data.currencyCode;
+    return WidgetSnapshot._of(
+      month: month.month,
+      code: data.currencyCode,
+      spent: Budgets.totalSpentInMonthMinor(data, month),
+      budget: Budgets.totalMonthlyBudgetMinor(data),
+      categories: Budgets.byCategory(data, month),
+      owed: PeopleLedger.totalOwedToYouMinor(data),
+      showAmounts: showAmounts,
+    );
+  }
+
+  /// The same snapshot as [WidgetSnapshot.from] for the summary's day, from
+  /// figures the dashboard has already computed.
+  factory WidgetSnapshot.fromSummary(
+    DashboardSummary summary, {
+    required String code,
+    required bool showAmounts,
+  }) => WidgetSnapshot._of(
+    month: summary.today.month,
+    code: code,
+    spent: summary.monthSpentMinor,
+    budget: summary.monthlyBudgetMinor,
+    categories: summary.budgetRows,
+    owed: summary.owedToYouMinor,
+    showAmounts: showAmounts,
+  );
+
+  /// [categories] is most-spent first; rows with nothing spent are skipped.
+  factory WidgetSnapshot._of({
+    required int month,
+    required String code,
+    required int spent,
+    required int budget,
+    required List<CategorySpend> categories,
+    required int owed,
+    required bool showAmounts,
+  }) {
     String fmt(int minor) =>
         showAmounts ? Money.format(minor, code: code) : mask;
-
-    final spent = Budgets.totalSpentInMonthMinor(data, month);
-    final budget = Budgets.totalMonthlyBudgetMinor(data);
     final hasBudget = budget > 0;
     final left = budget - spent;
-
-    final top = Budgets.byCategory(
-      data,
-      month,
-    ).where((c) => c.spentMinor > 0).take(3);
+    final top = categories.where((c) => c.spentMinor > 0).take(3);
 
     return WidgetSnapshot(
-      monthLabel: _months[month.month - 1],
+      monthLabel: _months[month - 1],
       primaryLabel: hasBudget ? 'Left to spend' : 'Spent this month',
       primaryValue: fmt(hasBudget ? left : spent),
       spentValue: fmt(spent),
@@ -89,7 +119,7 @@ final class WidgetSnapshot {
       categories: [
         for (final c in top) (name: c.name, amount: fmt(c.spentMinor)),
       ],
-      owedValue: fmt(PeopleLedger.totalOwedToYouMinor(data)),
+      owedValue: fmt(owed),
     );
   }
 }

@@ -41,9 +41,14 @@ abstract final class DashboardFlow {
   static DateTime endOfDay(DateTime d) =>
       DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
 
+  /// A calendar day as `yyyymmdd`, ordered like the days themselves.
+  static int dayKey(DateTime d) => d.year * 10000 + d.month * 100 + d.day;
+
+  /// Whether [d] falls on a calendar day from [start] to [end], inclusive.
+  /// Days compare as [dayKey]s, so no [DateTime] is built per call.
   static bool inRange(DateTime d, DateTime start, DateTime end) {
-    final day = _day(d);
-    return !day.isBefore(_day(start)) && !day.isAfter(_day(end));
+    final day = dayKey(d);
+    return day >= dayKey(start) && day <= dayKey(end);
   }
 
   static int spentInRange(AppData data, DateTime start, DateTime end) => data

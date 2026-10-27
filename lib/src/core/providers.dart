@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:core_backup/core_backup.dart';
@@ -9,11 +11,13 @@ import 'package:core_notify/core_notify.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:core_update/core_update.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/data/app_data_notifier.dart';
 import 'package:budgetly/src/core/data/period_filter_store.dart';
+import 'package:budgetly/src/core/logic/dashboard_summary.dart';
 import 'package:budgetly/src/core/models/period_filter.dart';
 import 'package:budgetly/src/core/security/key_derivation.dart';
 import 'package:budgetly/src/core/storage/data_key_store.dart';
@@ -47,11 +51,14 @@ final dataKeyStoreProvider = Provider<DataKeyStore>(
   (ref) => DataKeyStore(ref.watch(secureStorageProvider)),
 );
 
+final vaultWorkerProvider = Provider<VaultWorker>((_) => Isolate.run);
+
 final budgetlyStoreProvider = Provider<BudgetlyStore>(
   (ref) => BudgetlyStore(
     cipher: ref.watch(cipherServiceProvider),
     keyStore: ref.watch(dataKeyStoreProvider),
     file: ref.watch(vaultFileProvider),
+    worker: ref.watch(vaultWorkerProvider),
   ),
 );
 
@@ -225,6 +232,24 @@ final widgetShowAmountsProvider = FutureProvider<bool>(
   (ref) => ref.watch(homeWidgetServiceProvider).readShowAmounts(),
 );
 
+/// The dashboard's figures for one calendar day. Recomputed only when the data
+/// snapshot or the shared filter changes, never on a plain rebuild.
+final dashboardSummaryProvider = Provider.autoDispose
+    .family<DashboardSummary, DateTime>((ref, today) {
+      final data = ref.watch(appDataProvider.select((a) => a.requireValue));
+      final filter = ref.watch(periodFilterProvider);
+      final watch = Stopwatch()..start();
+      final summary = DashboardSummary.compute(data, filter, today);
+      if (!kReleaseMode) {
+        developer.log(
+          'dashboard summary ${watch.elapsedMicroseconds / 1000} ms '
+          '(${data.txns.length} txns)',
+          name: 'budgetly.perf',
+        );
+      }
+      return summary;
+    });
+
 /// Keeps the home-screen widgets in step with the vault: pushes a fresh
 /// snapshot on app start, after every data change and when the privacy
 /// toggle flips. Android only — the widgets are native RemoteViews.
@@ -233,10 +258,17 @@ final homeWidgetSyncProvider = Provider<void>((ref) {
   final data = ref.watch(appDataProvider).valueOrNull;
   final showAmounts = ref.watch(widgetShowAmountsProvider).valueOrNull;
   if (data == null || showAmounts == null) return;
-  final snapshot = WidgetSnapshot.from(
-    data,
-    ref.read(clockProvider)(),
-    showAmounts: showAmounts,
+  final now = ref.read(clockProvider)();
+  final summary = ref.watch(
+    dashboardSummaryProvider(DateTime(now.year, now.month, now.day)),
   );
-  ref.read(homeWidgetServiceProvider).push(snapshot);
+  ref
+      .read(homeWidgetServiceProvider)
+      .push(
+        WidgetSnapshot.fromSummary(
+          summary,
+          code: data.currencyCode,
+          showAmounts: showAmounts,
+        ),
+      );
 });
