@@ -12,19 +12,25 @@ class BudgetlyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(homeWidgetSyncProvider);
-    return MaterialApp.router(
-      title: 'Budgetly',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(Brightness.light, accent: AppAccents.budgetly),
-      darkTheme: AppTheme.build(Brightness.dark, accent: AppAccents.budgetly),
-      themeMode: ThemeMode.system,
-      routerConfig: ref.watch(routerProvider),
-      // App-lock cover sits above the router; the navigator stays mounted
-      // underneath so unlocking restores exactly where the user was.
-      builder: (context, child) => AppLockGate(
-        controller: ref.watch(lockControllerProvider),
-        appMark: const SuiteAppIcon(app: SuiteApp.budgetly, size: 56),
-        child: child ?? const SizedBox.shrink(),
+    final appearance = ref.watch(appearanceProvider);
+    final router = ref.watch(routerProvider);
+    final lock = ref.watch(lockControllerProvider);
+    return ListenableBuilder(
+      listenable: appearance,
+      builder: (context, _) => MaterialApp.router(
+        title: 'Budgetly',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.build(Brightness.light, accent: AppAccents.budgetly),
+        darkTheme: AppTheme.build(Brightness.dark, accent: AppAccents.budgetly),
+        themeMode: appearance.mode,
+        routerConfig: router,
+        // App-lock cover sits above the router; the navigator stays mounted
+        // underneath so unlocking restores exactly where the user was.
+        builder: (context, child) => AppLockGate(
+          controller: lock,
+          appMark: const SuiteAppIcon(app: SuiteApp.budgetly, size: 64),
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }
