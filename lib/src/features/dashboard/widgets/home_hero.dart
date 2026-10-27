@@ -12,9 +12,10 @@ import 'package:budgetly/src/core/widgets/category_visual.dart';
 import 'package:budgetly/src/core/widgets/money_text.dart';
 import 'package:budgetly/src/core/widgets/progress_bar.dart';
 
-/// The month at a glance: what is left of the budget (or what has gone, with
-/// no budget set), how that compares with the same point last month, and the
-/// month's shape as a line.
+/// The month at a glance, answering "how much can I still spend": what is
+/// left of the budget and what that allows per day for the rest of the month
+/// (or, with no budget set, what has gone and how that compares with last
+/// month).
 ///
 /// Budgets are per month, so this card always describes the calendar month,
 /// whatever window the period chips select further down.
@@ -32,10 +33,12 @@ class MonthHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
     final code = data.currencyCode;
     final month = DateTime(now.year, now.month);
     final monthName = DateFormat.MMMM().format(month);
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    // Today counts: money left today is still spendable today.
     final daysLeft = daysInMonth - now.day + 1;
 
     final spent = Budgets.totalSpentInMonthMinor(data, month);
@@ -56,21 +59,36 @@ class MonthHeroCard extends StatelessWidget {
     final lastSpent = DashboardFlow.spentInRange(data, lastStart, lastEnd);
     final delta = lastSpent == 0 ? null : (spent - lastSpent) * 100 / lastSpent;
 
-    // Cumulative spend per day so far; with a budget the line is what was
-    // left at the end of each day.
-    var running = 0;
-    final trend = <double>[
-      for (var d = 1; d <= now.day; d++)
-        () {
-          final day = DateTime(now.year, now.month, d);
-          running += DashboardFlow.spentInRange(data, day, day);
-          return (hasBudget ? budget - running : running) / 100;
-        }(),
-    ];
-
     String fmt(int minor) => Money.format(minor, code: code);
-    final perDay = left > 0 ? left ~/ daysLeft : 0;
     final saved = income > 0 ? ((income - spent) * 100 / income).round() : null;
+
+    final Widget? lead;
+    final String? leadCaption;
+    if (!hasBudget) {
+      lead = delta == null
+          ? null
+          : DeltaBadge(delta: delta, polarity: DeltaPolarity.upIsBad);
+      leadCaption = delta == null
+          ? null
+          : delta <= 0
+          ? 'less spent than this time last month'
+          : 'more spent than this time last month';
+    } else if (left > 0) {
+      lead = AmountText(
+        left ~/ daysLeft,
+        code: code,
+        style: AppTextStyles.numberMedium,
+        color: c.accent,
+      );
+      leadCaption = daysLeft == 1
+          ? 'to spend today'
+          : 'a day to stay on budget';
+    } else {
+      lead = null;
+      leadCaption = left == 0
+          ? 'Budget used up for $monthName'
+          : 'Over budget for $monthName';
+    }
 
     return HeroMetricCard(
       onTap: onTap,
@@ -84,22 +102,25 @@ class MonthHeroCard extends StatelessWidget {
         hasBudget ? left : spent,
         code: code,
         style: AppTextStyles.hero,
-        color: hasBudget && left < 0 ? SuiteColors.of(context).negative : null,
+        color: hasBudget && left < 0 ? c.negative : null,
       ),
-      delta: delta == null
-          ? null
-          : DeltaBadge(delta: delta, polarity: DeltaPolarity.upIsBad),
-      deltaCaption: delta == null
-          ? null
-          : delta <= 0
-          ? 'less spent than this time last month'
-          : 'more spent than this time last month',
-      trend: trend.length < 2 ? null : trend,
+      delta: lead,
+      deltaCaption: leadCaption,
       footer: hasBudget
           ? [
-              StatTile(label: 'Budget', value: fmt(budget)),
               StatTile(label: 'Spent', value: fmt(spent)),
-              StatTile(label: 'Per day', value: fmt(perDay)),
+              StatTile(label: 'Budget', value: fmt(budget)),
+              StatTile(
+                label: 'vs last month',
+                value: delta == null
+                    ? '—'
+                    : '${delta > 0 ? '+' : '−'}${delta.abs().round()}%',
+                valueColor: delta == null || delta.round() == 0
+                    ? null
+                    : delta > 0
+                    ? c.negative
+                    : c.positive,
+              ),
             ]
           : [
               StatTile(label: 'Income', value: fmt(income)),
@@ -110,10 +131,9 @@ class MonthHeroCard extends StatelessWidget {
   }
 }
 
-/// The two budgets closest to their limit, side by side, each with a tick
-/// where spending would be if it were on pace for the month. A budget spent
-/// to the exact amount is a fixed bill already paid, not one to watch, so it
-/// only shows when nothing else is budgeted.
+/// The budgets that need attention this month, worst first, as two cards side
+/// by side with a tick where spending would be if it were on pace. Renders
+/// nothing while every budget is comfortably on track.
 class BudgetPair extends StatelessWidget {
   const BudgetPair({
     required this.rows,
@@ -128,19 +148,28 @@ class BudgetPair extends StatelessWidget {
   final String code;
   final VoidCallback onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    final all = rows.where((r) => r.hasBudget).toList();
-    final open = all.where((r) => r.spentMinor != r.budgetMinor).toList();
-    final budgeted = (open.isEmpty ? all : open)
-      ..sort(
-        (a, b) => (b.spentMinor / b.budgetMinor).compareTo(
-          a.spentMinor / a.budgetMinor,
-        ),
-      );
-    if (budgeted.isEmpty) return const SizedBox.shrink();
+  /// Budgets over their limit, at 80 % or more of it, or at least half spent
+  /// and running ahead of the month's pace — worst first. A budget spent to
+  /// the exact amount is a fixed bill already paid, not one to watch.
+  static List<CategorySpend> atRisk(List<CategorySpend> rows, DateTime now) {
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final pace = now.day / daysInMonth;
+    double used(CategorySpend s) => s.spentMinor / s.budgetMinor;
+    return rows.where((s) {
+      if (!s.hasBudget || s.spentMinor == s.budgetMinor) return false;
+      final u = used(s);
+      return u >= 0.8 || (u >= 0.5 && u > pace);
+    }).toList()..sort((a, b) => used(b).compareTo(used(a)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final watch = atRisk(rows, now);
+    if (watch.isEmpty) return const SizedBox.shrink();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final pace = now.day / daysInMonth;
+    final over = watch.where((s) => s.overBudget).length;
+    final close = watch.length - over;
 
     Widget card(CategorySpend s) => MetricCard(
       label: s.name,
@@ -152,21 +181,37 @@ class BudgetPair extends StatelessWidget {
         code: code,
         style: AppTextStyles.numberMedium,
       ),
-      caption: 'of ${Money.format(s.budgetMinor, code: code)}',
+      caption: s.overBudget
+          ? '${Money.format(-s.remainingMinor, code: code)} over'
+          : '${Money.format(s.remainingMinor, code: code)} left',
       visual: ProgressBar(value: s.spentMinor / s.budgetMinor, marker: pace),
     );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.smd),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: card(budgeted[0])),
-          const SizedBox(width: AppSpacing.smd),
-          Expanded(
-            child: budgeted.length > 1
-                ? card(budgeted[1])
-                : const SizedBox.shrink(),
+          SectionHeader(
+            title: 'Budgets to watch',
+            subtitle: [
+              if (over > 0) '$over over',
+              if (close > 0) '$close close to the limit',
+            ].join(' · '),
+            actionLabel: 'All',
+            onAction: onTap,
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: card(watch[0])),
+              const SizedBox(width: AppSpacing.smd),
+              Expanded(
+                child: watch.length > 1
+                    ? card(watch[1])
+                    : const SizedBox.shrink(),
+              ),
+            ],
           ),
         ],
       ),
@@ -176,10 +221,16 @@ class BudgetPair extends StatelessWidget {
 
 /// The last seven days as bars, today highlighted, against the seven before.
 class WeekCard extends StatelessWidget {
-  const WeekCard({required this.data, required this.now, super.key});
+  const WeekCard({
+    required this.data,
+    required this.now,
+    this.onTap,
+    super.key,
+  });
 
   final AppData data;
   final DateTime now;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -200,6 +251,7 @@ class WeekCard extends StatelessWidget {
     final delta = before == 0 ? null : (total - before) * 100 / before;
 
     return VaultCard(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

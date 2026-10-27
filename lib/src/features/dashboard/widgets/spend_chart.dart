@@ -14,6 +14,7 @@ class SpendChart extends StatelessWidget {
     required this.title,
     required this.unit,
     required this.code,
+    this.onTap,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class SpendChart extends StatelessWidget {
   /// "per day", "per month": what one bar stands for, under the average.
   final String unit;
   final String code;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,7 @@ class SpendChart extends StatelessWidget {
     final caption = AppTextStyles.caption.copyWith(color: c.textTertiary);
 
     return VaultCard(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

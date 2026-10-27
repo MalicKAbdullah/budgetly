@@ -18,18 +18,21 @@ class SummaryCard extends StatelessWidget {
     required this.spentMinor,
     required this.incomeMinor,
     required this.code,
+    this.onTap,
     super.key,
   });
 
   final int spentMinor;
   final int incomeMinor;
   final String code;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
     final net = incomeMinor - spentMinor;
     return VaultCard(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -196,23 +199,24 @@ class CategoryBreakdown extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // The period's total sits on the summary card just
+                      // above, so this side names the spread instead.
                       Text(
-                        'Spent',
+                        'Spent across',
                         style: AppTextStyles.label.copyWith(
                           color: c.textSecondary,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xs),
-                      AmountText(
-                        total,
-                        code: code,
-                        style: AppTextStyles.numberMedium,
+                      Text(
+                        sorted.length == 1
+                            ? '1 category'
+                            : '${sorted.length} categories',
+                        style: AppTextStyles.h4.copyWith(color: c.textPrimary),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        sorted.length == 1
-                            ? 'in 1 category'
-                            : 'across ${sorted.length} categories',
+                        'Tap one to see its transactions',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: c.textTertiary,
                         ),
