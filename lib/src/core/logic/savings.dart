@@ -94,9 +94,23 @@ abstract final class Savings {
   /// figure can never drift from how today's is computed.
   static SavingsPosition position(AppData data, {DateTime? asOf}) {
     final scoped = asOf == null ? data : _upTo(data, asOf);
+    return positionFrom(
+      scoped,
+      people: PeopleLedger.positions(scoped),
+      heldMinor: Balances.netWorthMinor(scoped),
+    );
+  }
+
+  /// [position] for callers that already hold [PeopleLedger.positions] and
+  /// [Balances.netWorthMinor] of [data].
+  static SavingsPosition positionFrom(
+    AppData data, {
+    required List<PersonPosition> people,
+    required int heldMinor,
+  }) {
     var counted = 0;
     var uncounted = 0;
-    for (final person in PeopleLedger.positions(scoped)) {
+    for (final person in people) {
       for (final entry in person.openEntries(DebtKind.owedToYou)) {
         if (entry.txn.receivableCountsAsSavings) {
           counted += entry.outstandingMinor;
@@ -106,7 +120,7 @@ abstract final class Savings {
       }
     }
     return SavingsPosition(
-      heldMinor: Balances.netWorthMinor(scoped),
+      heldMinor: heldMinor,
       countedReceivablesMinor: counted,
       uncountedReceivablesMinor: uncounted,
       targetMinor: data.savingsTargetMinor,

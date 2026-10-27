@@ -1,12 +1,9 @@
-import 'dart:math' as math;
-
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:budgetly/src/core/data/app_data.dart';
 import 'package:budgetly/src/core/logic/budgets.dart';
-import 'package:budgetly/src/core/logic/flow.dart';
+import 'package:budgetly/src/core/logic/dashboard_summary.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/widgets/category_visual.dart';
 import 'package:budgetly/src/core/widgets/money_text.dart';
@@ -21,42 +18,33 @@ import 'package:budgetly/src/core/widgets/progress_bar.dart';
 /// whatever window the period chips select further down.
 class MonthHeroCard extends StatelessWidget {
   const MonthHeroCard({
-    required this.data,
-    required this.now,
+    required this.summary,
+    required this.code,
     this.onTap,
     super.key,
   });
 
-  final AppData data;
-  final DateTime now;
+  final DashboardSummary summary;
+  final String code;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
-    final code = data.currencyCode;
+    final now = summary.today;
     final month = DateTime(now.year, now.month);
     final monthName = DateFormat.MMMM().format(month);
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     // Today counts: money left today is still spendable today.
     final daysLeft = daysInMonth - now.day + 1;
 
-    final spent = Budgets.totalSpentInMonthMinor(data, month);
-    final income = Budgets.totalIncomeInMonthMinor(data, month);
-    final budget = Budgets.totalMonthlyBudgetMinor(data);
+    final spent = summary.monthSpentMinor;
+    final income = summary.monthIncomeMinor;
+    final budget = summary.monthlyBudgetMinor;
     final hasBudget = budget > 0;
     final left = budget - spent;
 
-    // Month-to-date against the same days of last month, so a half-gone
-    // month is never compared with a whole one.
-    final lastStart = DateTime(now.year, now.month - 1);
-    final lastDays = DateTime(now.year, now.month, 0).day;
-    final lastEnd = DateTime(
-      lastStart.year,
-      lastStart.month,
-      math.min(now.day, lastDays),
-    );
-    final lastSpent = DashboardFlow.spentInRange(data, lastStart, lastEnd);
+    final lastSpent = summary.lastMonthToDateSpentMinor;
     final delta = lastSpent == 0 ? null : (spent - lastSpent) * 100 / lastSpent;
 
     String fmt(int minor) => Money.format(minor, code: code);
@@ -222,32 +210,23 @@ class BudgetPair extends StatelessWidget {
 /// The last seven days as bars, today highlighted, against the seven before.
 class WeekCard extends StatelessWidget {
   const WeekCard({
-    required this.data,
-    required this.now,
+    required this.summary,
+    required this.code,
     this.onTap,
     super.key,
   });
 
-  final AppData data;
-  final DateTime now;
+  final DashboardSummary summary;
+  final String code;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
-    final today = DateTime(now.year, now.month, now.day);
-    final days = [
-      for (var i = 6; i >= 0; i--) today.subtract(Duration(days: i)),
-    ];
-    final values = [
-      for (final d in days) DashboardFlow.spentInRange(data, d, d),
-    ];
+    final days = summary.weekDays;
+    final values = summary.weekSpentMinor;
     final total = values.fold(0, (a, b) => a + b);
-    final before = DashboardFlow.spentInRange(
-      data,
-      today.subtract(const Duration(days: 13)),
-      today.subtract(const Duration(days: 7)),
-    );
+    final before = summary.weekBeforeSpentMinor;
     final delta = before == 0 ? null : (total - before) * 100 / before;
 
     return VaultCard(
@@ -272,11 +251,7 @@ class WeekCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          AmountText(
-            total,
-            code: data.currencyCode,
-            style: AppTextStyles.numberLarge,
-          ),
+          AmountText(total, code: code, style: AppTextStyles.numberLarge),
           const SizedBox(height: AppSpacing.mdl),
           Semantics(
             label: 'Spending per day, last seven days',
