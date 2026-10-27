@@ -27,6 +27,11 @@ class SettingsScreen extends ConsumerWidget {
           AppSpacing.xxl,
         ),
         children: [
+          RowGroup(
+            children: [
+              AppearanceSetting(controller: ref.watch(appearanceProvider)),
+            ],
+          ),
           const _Section('Money'),
           RowGroup(
             children: [
