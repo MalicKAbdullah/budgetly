@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:core_backup/core_backup.dart';
@@ -46,11 +47,14 @@ final dataKeyStoreProvider = Provider<DataKeyStore>(
   (ref) => DataKeyStore(ref.watch(secureStorageProvider)),
 );
 
+final vaultWorkerProvider = Provider<VaultWorker>((_) => Isolate.run);
+
 final budgetlyStoreProvider = Provider<BudgetlyStore>(
   (ref) => BudgetlyStore(
     cipher: ref.watch(cipherServiceProvider),
     keyStore: ref.watch(dataKeyStoreProvider),
     file: ref.watch(vaultFileProvider),
+    worker: ref.watch(vaultWorkerProvider),
   ),
 );
 

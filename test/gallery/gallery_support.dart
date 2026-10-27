@@ -110,6 +110,7 @@ Future<void> renderScreen(
   final storage = MemorySecureStorage();
   List<Override> overrides() => [
     vaultFileProvider.overrideWithValue(vault),
+    vaultWorkerProvider.overrideWithValue(<R>(work) async => work()),
     secureStorageProvider.overrideWithValue(storage),
   ];
   final seeding = ProviderContainer(overrides: overrides());
