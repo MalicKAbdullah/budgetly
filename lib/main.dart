@@ -33,6 +33,7 @@ Future<void> main() async {
   );
   // The date window the owner last chose, so every screen opens on it.
   final periodFilter = await PeriodFilterStore.read(storage);
+  final appearance = await AppearanceController.load();
   developer.log(
     'secure storage ready ${startup.elapsedMilliseconds} ms',
     name: 'budgetly.startup',
@@ -53,6 +54,7 @@ Future<void> main() async {
         appLockEnabledOnLaunchProvider.overrideWithValue(lockEnabled),
         appLockBiometricOnLaunchProvider.overrideWithValue(biometricEnabled),
         periodFilterOnLaunchProvider.overrideWithValue(periodFilter),
+        appearanceProvider.overrideWithValue(appearance),
         notifyProvider.overrideWithValue(notify),
       ],
       child: const BudgetlyApp(),

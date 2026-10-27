@@ -7,6 +7,7 @@ import 'package:core_crypto/core_crypto.dart';
 import 'package:core_lock/core_lock.dart';
 import 'package:core_notify/core_notify.dart';
 import 'package:core_storage/core_storage.dart';
+import 'package:core_theme/core_theme.dart';
 import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -57,6 +58,12 @@ final budgetlyStoreProvider = Provider<BudgetlyStore>(
 /// The single source of truth for all app data.
 final appDataProvider = AsyncNotifierProvider<AppDataNotifier, AppData>(
   AppDataNotifier.new,
+);
+
+/// The System / Light / Dark choice, loaded in main() before runApp so the
+/// first frame (the lock screen included) already has the chosen theme.
+final appearanceProvider = Provider<AppearanceController>(
+  (_) => throw UnimplementedError('main() overrides appearanceProvider'),
 );
 
 // -- Shared date filter ----------------------------------------------------
