@@ -29,7 +29,8 @@ class UpdateCard extends ConsumerWidget {
   }
 }
 
-/// "We captured N transactions — review?" banner. Shows only while captured
+/// "N captured transactions · Review" strip, the first thing on the home
+/// screen. Shows only while captured
 /// alerts are still awaiting a decision.
 class CaptureBanner extends ConsumerWidget {
   const CaptureBanner({super.key});
@@ -42,11 +43,11 @@ class CaptureBanner extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.smd),
       child: AppBanner(
         icon: Icons.mark_email_unread_outlined,
-        title: n == 1
-            ? '1 captured transaction to review'
-            : '$n captured transactions to review',
-        message: 'From your bank and wallet alerts. Accept or discard.',
+        title: n == 1 ? '1 captured transaction' : '$n captured transactions',
+        message: 'From bank and wallet alerts',
         onTap: () => context.push('/capture'),
+        actionLabel: 'Review',
+        onAction: () => context.push('/capture'),
       ),
     );
   }

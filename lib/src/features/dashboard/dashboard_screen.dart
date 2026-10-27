@@ -18,6 +18,7 @@ import 'package:budgetly/src/features/dashboard/widgets/dashboard_cards.dart';
 import 'package:budgetly/src/features/dashboard/widgets/savings_card.dart';
 import 'package:budgetly/src/features/dashboard/widgets/home_hero.dart';
 import 'package:budgetly/src/features/dashboard/widgets/spend_chart.dart';
+import 'package:budgetly/src/features/people/people_screen.dart';
 import 'package:budgetly/src/features/statement/statement_pdf_service.dart';
 import 'package:printing/printing.dart';
 
@@ -115,13 +116,18 @@ class _Body extends ConsumerWidget {
               112,
             ),
             children: [
+              // The first screen answers the daily questions in order: what
+              // needs a decision (captured alerts), what can be spent, which
+              // budgets are slipping, who owes whom. Where the money went and
+              // the account detail follow below.
+              //
               // Banners and cards that can vanish carry their own bottom gap,
               // so a hidden one leaves no hole.
               NotifyTrigger(data: data),
               _Header(now: now, onExport: onExport),
               const SizedBox(height: AppSpacing.lg),
-              const UpdateCard(),
               const CaptureBanner(),
+              const UpdateCard(),
               MonthHeroCard(
                 data: data,
                 now: now,
@@ -134,8 +140,11 @@ class _Body extends ConsumerWidget {
                 code: code,
                 onTap: () => context.go('/budgets'),
               ),
-              WeekCard(data: data, now: now),
-              const SizedBox(height: AppSpacing.lg),
+              if (people.isNotEmpty) ...[
+                _PeopleSection(people: people, data: data),
+                const SizedBox(height: AppSpacing.smd),
+              ],
+              const SizedBox(height: AppSpacing.smd),
               SectionHeader(
                 title: 'Recent',
                 subtitle: todayCount == 0
@@ -165,10 +174,6 @@ class _Body extends ConsumerWidget {
                           ),
                       ],
                     ),
-              if (people.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.smd),
-                _PeopleCard(people: people, data: data),
-              ],
               const SizedBox(height: AppSpacing.lg),
               SectionHeader(
                 title: 'Where it went',
@@ -176,7 +181,12 @@ class _Body extends ConsumerWidget {
               ),
               const PeriodFilterBar(),
               const SizedBox(height: AppSpacing.smd),
-              SummaryCard(spentMinor: spent, incomeMinor: income, code: code),
+              SummaryCard(
+                spentMinor: spent,
+                incomeMinor: income,
+                code: code,
+                onTap: () => context.go('/transactions'),
+              ),
               const SizedBox(height: AppSpacing.smd),
               CategoryBreakdown(
                 data: data,
@@ -196,6 +206,13 @@ class _Body extends ConsumerWidget {
                 title: 'Spending by ${_bucketNoun(start, end)}',
                 unit: 'per ${_bucketNoun(start, end)}',
                 code: code,
+                onTap: () => context.go('/transactions'),
+              ),
+              const SizedBox(height: AppSpacing.smd),
+              WeekCard(
+                data: data,
+                now: now,
+                onTap: () => context.go('/transactions'),
               ),
               const SizedBox(height: AppSpacing.lg),
               SectionHeader(
@@ -218,8 +235,9 @@ class _Body extends ConsumerWidget {
                 onAction: () => context.go('/budgets'),
               ),
               budgetRows.isEmpty
-                  ? const VaultCard(
-                      child: AppEmptyState(
+                  ? VaultCard(
+                      onTap: () => context.go('/budgets'),
+                      child: const AppEmptyState(
                         compact: true,
                         icon: Icons.donut_large_rounded,
                         title: 'No budgets yet',
@@ -229,7 +247,10 @@ class _Body extends ConsumerWidget {
                   : RowGroup(
                       children: [
                         for (final row in budgetRows.take(5))
-                          BudgetRow(spend: row, code: code),
+                          InkWell(
+                            onTap: () => context.go('/budgets'),
+                            child: BudgetRow(spend: row, code: code),
+                          ),
                       ],
                     ),
               Padding(
@@ -306,33 +327,47 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Net split position across everyone, with a way into People / Settle up.
-class _PeopleCard extends StatelessWidget {
-  const _PeopleCard({required this.people, required this.data});
+/// Who owes the owner and whom the owner owes, biggest balance first, each
+/// row opening that person's ledger to settle up.
+class _PeopleSection extends StatelessWidget {
+  const _PeopleSection({required this.people, required this.data});
   final List<PersonPosition> people;
   final AppData data;
 
+  static const _shown = 3;
+
   @override
   Widget build(BuildContext context) {
-    final c = SuiteColors.of(context);
     final code = data.currencyCode;
     final owed = PeopleLedger.totalOwedToYouMinor(data);
     final owe = PeopleLedger.totalYouOweMinor(data);
-    final subtitle = [
-      if (owed > 0) '${Money.format(owed, code: code)} owed to you',
-      if (owe > 0) 'you owe ${Money.format(owe, code: code)}',
-    ].join(' · ');
+    final sorted = [...people]
+      ..sort((a, b) => b.netMinor.abs().compareTo(a.netMinor.abs()));
 
-    return RowGroup(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppListRow(
-          leading: IconBadge(icon: Icons.handshake_outlined, color: c.accent),
-          title: people.length == 1
-              ? 'Settle up with ${people.first.name}'
-              : 'Settle up with ${people.length} people',
-          subtitle: subtitle,
-          showChevron: true,
-          onTap: () => context.push('/people'),
+        SectionHeader(
+          title: 'Settle up',
+          subtitle: [
+            if (owed > 0) '${Money.format(owed, code: code)} owed to you',
+            if (owe > 0) 'you owe ${Money.format(owe, code: code)}',
+          ].join(' · '),
+          actionLabel: people.length > _shown
+              ? 'All ${people.length}'
+              : 'People',
+          onAction: () => context.push('/people'),
+        ),
+        RowGroup(
+          children: [
+            for (final p in sorted.take(_shown))
+              PersonRow(
+                position: p,
+                code: code,
+                onTap: () =>
+                    context.push('/people/${PeopleLedger.routeKeyFor(p.key)}'),
+              ),
+          ],
         ),
       ],
     );
