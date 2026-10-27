@@ -53,6 +53,23 @@ recorded later first.
 `DateTime`s per call, which also speeds up the activity list filter and the
 statement export.
 
+## The activity list
+
+`activityListProvider` holds the filtered transactions grouped into days with
+each day's and the window's totals (`ActivityList.of`), keyed by the filter
+set and window and recomputed only when those or the data snapshot change —
+typing in the search box recomputes it, scrolling and rebuilds do not.
+
+Each day is a `SliverMainAxisGroup` of a pinned `TxnDayHeader` and a
+`TxnDayCard`: a `SliverList.builder` of rows inside two `DecoratedSliver`s
+that draw the grouped-card fill and border exactly as `RowGroup` does (the
+border clipped to the rounded outline, as a `Material` clips it). Every row
+sits on its own transparent `Material`, so its ink shows above the fill, and
+the first and last rows clip that ink to the rounded corners. Rows are built
+as they scroll into view. Pinned day headers need one sliver group per day,
+so every day's header is still built, and each off-screen day builds its
+first row, which `SliverList` uses to estimate the day's height.
+
 ## Measurements
 
 `flutter test test/perf` (JIT), Apple M-series, median of repeated runs. Vault:
@@ -89,6 +106,17 @@ roughly 1.5–2× faster than JIT, so on a phone: the vault decode (~0.3–0.4 s
 overlaps the prompt without stalling it, and the home's first unlocked frame
 does no dataset work; the summary costs ~5–10 ms once when the data arrives.
 
+### Activity list ("All time", 5,000 transactions over 730 days)
+
+`test/perf/activity_benchmark_test.dart`, a 390×844 view in a widget test.
+The first frame covers build, layout and paint.
+
+| | One `RowGroup` per day (main) | `TxnDayCard` (now) |
+| --- | --- | --- |
+| Rows built on the first frame | 5,000 | 742 (12 on screen + 1 per other day) |
+| First frame | 2,800 ms | 600 ms |
+| Filter + group + per-day totals | 3.9 ms on every build | 2.0 ms per data / filter change |
+
 ## Timing logs
 
 Debug and profile builds log to `developer.log` (watch with
@@ -103,6 +131,9 @@ Debug and profile builds log to `developer.log` (watch with
 - Whole-dataset CPU work (crypto, JSON, parsing) runs through `VaultWorker`
   (`Isolate.run`), never on the UI isolate. A closure sent to an isolate is
   built in a scope that holds only sendable values.
+- Long lists build their rows lazily (`SliverList.builder`); a grouped card
+  is drawn with `DecoratedSliver`s around the lazy rows, not by a widget
+  that holds every row.
 - Widgets never roll up transactions in `build`. Derived figures come from a
   provider that recomputes only when its inputs change.
 - New dashboard figures go into `DashboardSummary`'s single pass, with an

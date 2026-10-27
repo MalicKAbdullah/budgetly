@@ -53,9 +53,9 @@ Future<double> _stallOnce(Future<void> Function() body) async {
   return longest / 1000;
 }
 
-void report(String title, Map<String, double> rows) {
+void report(String title, Map<String, double> rows, {String unit = 'ms'}) {
   print('== $title');
   for (final MapEntry(:key, :value) in rows.entries) {
-    print('  ${key.padRight(52)} ${value.toStringAsFixed(2).padLeft(9)} ms');
+    print('  ${key.padRight(52)} ${value.toStringAsFixed(2).padLeft(9)} $unit');
   }
 }
