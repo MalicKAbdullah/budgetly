@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Screen previews only render on request: `GALLERY=out_dir flutter test
 /// test/gallery`. Pixels differ per platform, so they are design-review
@@ -89,83 +90,74 @@ Future<void> loadGalleryFonts() async {
   ]);
 }
 
-/// Pumps [screen] over [data] at phone width in light and dark side by side
-/// and writes `GALLERY/name.png`. [interact] runs on the light pane's
-/// tester before capture (open a sheet, scroll, ...).
-Future<void> renderScreen(
+/// An appearance controller loaded from preferences that hold [mode], the
+/// way main() loads the owner's saved choice.
+Future<AppearanceController> appearanceFor(ThemeMode mode) async {
+  SharedPreferences.setMockInitialValues({
+    AppearanceController.storageKey: mode.name,
+  });
+  return AppearanceController.load();
+}
+
+/// Pumps one [app] per mode in [modes] side by side at phone size and writes
+/// `GALLERY/name.png`. Each pane's app gets a controller loaded with its
+/// mode and must bind `themeMode` to it, as BudgetlyApp does; the device
+/// itself reports light, so dark panes come from the setting alone.
+/// [interact] runs before capture and should act on every pane.
+Future<void> renderPanes(
   WidgetTester tester,
   String name,
-  Widget Function() screen, {
-  required AppData data,
+  Widget Function(AppearanceController appearance) app, {
+  List<ThemeMode> modes = const [ThemeMode.light, ThemeMode.dark],
   double width = 390,
-  double height = 1500,
+  double height = 844,
+  EdgeInsets viewInsets = EdgeInsets.zero,
+  Widget Function(Widget panes)? wrap,
   Future<void> Function(WidgetTester tester)? interact,
 }) async {
   await loadGalleryFonts();
+  final n = modes.length;
   tester.view.devicePixelRatio = 2;
-  tester.view.physicalSize = Size((width * 2 + 2) * 2, height * 2);
+  tester.view.physicalSize = Size((width * n + 2 * (n - 1)) * 2, height * 2);
   addTearDown(tester.view.reset);
 
-  final vault = MemoryVaultFile();
-  final storage = MemorySecureStorage();
-  List<Override> overrides() => [
-    vaultFileProvider.overrideWithValue(vault),
-    secureStorageProvider.overrideWithValue(storage),
-  ];
-  final seeding = ProviderContainer(overrides: overrides());
-  await seeding.read(budgetlyStoreProvider).save(data);
-  seeding.dispose();
-  final container = ProviderContainer(overrides: overrides());
-  addTearDown(container.dispose);
-
+  final controllers = [for (final m in modes) await appearanceFor(m)];
   final key = GlobalKey();
-  Widget pane(Brightness b) {
-    final router = GoRouter(
-      routes: [GoRoute(path: '/', builder: (_, _) => screen())],
-    );
-    addTearDown(router.dispose);
-    return SizedBox(
-      width: width,
-      height: height,
-      child: MediaQuery(
-        data: MediaQueryData(
-          size: Size(width, height),
-          padding: const EdgeInsets.only(top: 24),
-          viewPadding: const EdgeInsets.only(top: 24),
-          disableAnimations: true,
-        ),
-        child: MaterialApp.router(
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.build(b, accent: AppAccents.budgetly),
-          routerConfig: router,
-        ),
+  Widget pane(AppearanceController appearance) => SizedBox(
+    width: width,
+    height: height,
+    child: MediaQuery(
+      data: MediaQueryData(
+        size: Size(width, height),
+        padding: const EdgeInsets.only(top: 24),
+        viewPadding: const EdgeInsets.only(top: 24),
+        viewInsets: viewInsets,
+        disableAnimations: true,
       ),
-    );
-  }
+      child: app(appearance),
+    ),
+  );
 
-  await tester.pumpWidget(
-    UncontrolledProviderScope(
-      container: container,
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: RepaintBoundary(
-          key: key,
-          child: ColoredBox(
-            color: const Color(0xFF808080),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                pane(Brightness.light),
-                const SizedBox(width: 2),
-                pane(Brightness.dark),
-              ],
-            ),
-          ),
+  final panes = Directionality(
+    textDirection: TextDirection.ltr,
+    child: RepaintBoundary(
+      key: key,
+      child: ColoredBox(
+        color: const Color(0xFF808080),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final (i, c) in controllers.indexed) ...[
+              if (i > 0) const SizedBox(width: 2),
+              pane(c),
+            ],
+          ],
         ),
       ),
     ),
   );
+  await tester.pumpWidget(wrap == null ? panes : wrap(panes));
   await tester.pumpAndSettle();
   if (interact != null) {
     await interact(tester);
@@ -179,6 +171,59 @@ Future<void> renderScreen(
     Directory(galleryOut!).createSync(recursive: true);
     File('$galleryOut/$name.png').writeAsBytesSync(bytes!.buffer.asUint8List());
   });
+}
+
+/// Pumps [screen] over [data] in light and dark side by side (see
+/// [renderPanes]) and writes `GALLERY/name.png`.
+Future<void> renderScreen(
+  WidgetTester tester,
+  String name,
+  Widget Function() screen, {
+  required AppData data,
+  double width = 390,
+  double height = 1500,
+  Future<void> Function(WidgetTester tester)? interact,
+}) async {
+  final vault = MemoryVaultFile();
+  final storage = MemorySecureStorage();
+  List<Override> overrides() => [
+    vaultFileProvider.overrideWithValue(vault),
+    secureStorageProvider.overrideWithValue(storage),
+  ];
+  final seeding = ProviderContainer(overrides: overrides());
+  await seeding.read(budgetlyStoreProvider).save(data);
+  seeding.dispose();
+  final container = ProviderContainer(overrides: overrides());
+  addTearDown(container.dispose);
+
+  await renderPanes(
+    tester,
+    name,
+    (appearance) {
+      final router = GoRouter(
+        routes: [GoRoute(path: '/', builder: (_, _) => screen())],
+      );
+      addTearDown(router.dispose);
+      return ProviderScope(
+        overrides: [appearanceProvider.overrideWithValue(appearance)],
+        child: MaterialApp.router(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.build(Brightness.light, accent: AppAccents.budgetly),
+          darkTheme: AppTheme.build(
+            Brightness.dark,
+            accent: AppAccents.budgetly,
+          ),
+          themeMode: appearance.mode,
+          routerConfig: router,
+        ),
+      );
+    },
+    width: width,
+    height: height,
+    wrap: (panes) =>
+        UncontrolledProviderScope(container: container, child: panes),
+    interact: interact,
+  );
   // Let the auto-backup debounce fire so no timer outlives the test.
   await tester.pump(const Duration(seconds: 6));
 }
