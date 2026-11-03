@@ -1,0 +1,1 @@
+The Activity tab now opens fast even on long date ranges. Recent releases also reordered Home around what matters, sped up opening and saving, and added a new lock screen and an Appearance setting.

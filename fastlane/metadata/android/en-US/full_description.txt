@@ -1,0 +1,38 @@
+Budgetly answers one question well: where did my money go this month? It tracks cash and digital money together, so moving money around never looks like spending, and it handles the messy real-world cases that generic budget apps get wrong: splitting a bill, getting paid back, recurring bills.
+
+Everything is stored on your phone and encrypted. There is no account, no server, no analytics and no ads.
+
+TRACK CASH AND DIGITAL TOGETHER
+- Accounts for cash, bank, wallet and card, each with a live balance.
+- Transfers between your own accounts: an ATM withdrawal is Bank to Cash, so it moves money without counting as spending.
+- Fast entry of expenses, income and transfers.
+
+BUDGET WITH INTENT
+- Categories with monthly budgets, progress bars and over-budget warnings.
+- A dashboard with spend versus income for the window you pick, your total balance and recent activity.
+
+SAVINGS AS A POT ACROSS EVERY ACCOUNT
+- Savings is an earmark, not an account: Budgetly reserves an amount rather than a place, and shows how much has to stay put and how much is safe to spend.
+- Earmarks are neither spending nor income, so they never distort your budgets or charts.
+- Set a target, see how far ahead or short you are, and get a warning when you dip into reserved money.
+
+SETTLE UP WITH PEOPLE
+- Split one bill between several people, in both directions, and see who owes what.
+- Add and rename the people you share bills with by typing their names. No contacts permission is needed.
+
+CAPTURE BANK ALERTS ON YOUR DEVICE (OPTIONAL)
+- If you turn it on, Budgetly reads bank and wallet transaction notifications on your device, nudges you, and files them under Captured transactions.
+- Every captured alert opens a review sheet with the bank, amount, date and direction pre-filled and editable. Nothing is added to your books until you confirm it, and nothing is ever uploaded.
+
+YOURS ALONE
+- Optionally require your fingerprint or device lock to open the app.
+- Encrypted backup and restore to a folder you choose (including a Google Drive folder), protected by a passphrase only you know.
+- The data is encrypted with AES-256-GCM under a key held in the Android keystore. Backups use a separate passphrase via Argon2id.
+
+PERMISSIONS, IN PLAIN WORDS
+- Notification access (optional): lets Budgetly read bank and wallet alerts so it can offer to record them. You grant it yourself in Android settings. The alerts are parsed on the device and never leave it. Without it the app works fine and you add transactions by hand.
+- Notifications: to show the "transaction detected" nudge and budget reminders.
+- Biometrics: only for the optional app lock.
+- Budgetly does not ask for contacts, location, camera or microphone.
+
+Free and open source under the MIT license.
