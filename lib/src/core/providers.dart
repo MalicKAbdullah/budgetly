@@ -20,6 +20,7 @@ import 'package:budgetly/src/core/data/period_filter_store.dart';
 import 'package:budgetly/src/core/logic/activity_list.dart';
 import 'package:budgetly/src/core/logic/dashboard_summary.dart';
 import 'package:budgetly/src/core/models/period_filter.dart';
+import 'package:budgetly/src/core/store_build.dart';
 import 'package:budgetly/src/core/security/key_derivation.dart';
 import 'package:budgetly/src/core/state/txn_filters.dart';
 import 'package:budgetly/src/core/storage/data_key_store.dart';
@@ -185,6 +186,7 @@ final updateAutoCheckProvider = FutureProvider<bool>(
 
 /// The pending update (null when disabled, up to date, or offline).
 final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
+  if (kStoreBuild) return null;
   if (!await ref.watch(updateAutoCheckProvider.future)) return null;
   return ref.watch(updateServiceProvider).check();
 });

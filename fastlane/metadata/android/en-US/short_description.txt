@@ -1,0 +1,1 @@
+Private, offline budget tracker: split bills, savings, encrypted backups
