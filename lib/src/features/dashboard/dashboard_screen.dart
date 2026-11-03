@@ -9,6 +9,7 @@ import 'package:budgetly/src/core/logic/people.dart';
 import 'package:budgetly/src/core/money.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/core/state/category_filter.dart';
+import 'package:budgetly/src/core/store_build.dart';
 import 'package:budgetly/src/core/widgets/period_filter_bar.dart';
 import 'package:budgetly/src/core/widgets/txn_tile.dart';
 import 'package:budgetly/src/features/dashboard/widgets/dashboard_banners.dart';
@@ -119,7 +120,7 @@ class _Body extends ConsumerWidget {
               _Header(now: now, onExport: onExport),
               const SizedBox(height: AppSpacing.lg),
               const CaptureBanner(),
-              const UpdateCard(),
+              if (!kStoreBuild) const UpdateCard(),
               MonthHeroCard(
                 summary: summary,
                 code: code,

@@ -27,6 +27,8 @@ jobs:
         run: dart analyze --fatal-infos
       - name: Test
         run: flutter test
+      - name: Test store build (no update requests)
+        run: flutter test --dart-define=OFFLYNE_STORE=fdroid test/store_build_test.dart
 
   android-build:
     name: Android build

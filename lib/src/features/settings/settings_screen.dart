@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:budgetly/src/core/providers.dart';
+import 'package:budgetly/src/core/store_build.dart';
 import 'package:budgetly/src/features/backup/backup_codec.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -97,8 +98,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           const _Footnote('Replaces all data with a .budgetlybackup file.'),
-          const _Section('Updates'),
-          const _UpdateCheckTile(),
+          if (!kStoreBuild) ...[
+            const _Section('Updates'),
+            const _UpdateCheckTile(),
+          ],
           const SizedBox(height: AppSpacing.xl),
           const _About(),
         ],
