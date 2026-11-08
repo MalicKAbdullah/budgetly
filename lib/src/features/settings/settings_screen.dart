@@ -12,6 +12,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:budgetly/src/core/providers.dart';
 import 'package:budgetly/src/core/store_build.dart';
 import 'package:budgetly/src/features/backup/backup_codec.dart';
+import 'package:budgetly/src/features/backup/restore_dialogs.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -115,7 +116,7 @@ class SettingsScreen extends ConsumerWidget {
     if (path == null) return;
     if (!context.mounted) return;
 
-    final passphrase = await _askPassphrase(context);
+    final passphrase = await askBackupPassphrase(context);
     if (passphrase == null || !context.mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -125,28 +126,12 @@ class SettingsScreen extends ConsumerWidget {
           .read(backupCodecProvider)
           .decode(raw: raw, passphrase: passphrase);
       if (!context.mounted) return;
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Replace all data?'),
-          content: Text(
-            'This backup has ${data.accounts.length} accounts and '
-            '${data.txns.length} transactions. It will replace everything '
-            'currently in Budgetly.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Replace'),
-            ),
-          ],
-        ),
+      final confirm = await confirmReplaceAllData(
+        context,
+        accountCount: data.accounts.length,
+        txnCount: data.txns.length,
       );
-      if (confirm ?? false) {
+      if (confirm) {
         await ref.read(appDataProvider.notifier).importBackup(data);
         messenger.showSnackBar(
           const SnackBar(content: Text('Backup restored.')),
@@ -165,33 +150,6 @@ class SettingsScreen extends ConsumerWidget {
         const SnackBar(content: Text('Could not read the file.')),
       );
     }
-  }
-
-  Future<String?> _askPassphrase(BuildContext context) {
-    final controller = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Backup passphrase'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Passphrase'),
-          onSubmitted: (v) => Navigator.pop(context, v),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Restore'),
-          ),
-        ],
-      ),
-    );
   }
 }
 
